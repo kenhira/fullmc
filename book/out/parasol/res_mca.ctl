@@ -1,0 +1,15 @@
+DSET ^res_mca.grd
+OPTIONS BIG_ENDIAN
+OPTIONS template
+TITLE res_mca.grd
+UNDEF 1e+37
+XDEF 64 LINEAR 1.0 1.0
+YDEF 72 LINEAR 1.0 1.0
+ZDEF 38 LINEAR 1.0 1.0
+TDEF 1 LINEAR 00:00Z00JAN0001 1YR
+VARS 4
+a1 38 99 Flux Density
+a2 38 99 Flux Density
+a3 38 99 Flux Density
+b1 37 99 Heating Rate
+ENDVARS

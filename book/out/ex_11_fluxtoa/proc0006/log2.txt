@@ -1,0 +1,11 @@
+ Configuration: nx=          25  ny=           1  nz=          16
+                dx=   100.00000000000000       dy=   100.00000000000000       dz=   80.000000000000000     
+                nphoton=          20
+                source=           0
+                swlw=           1
+                transfer_mode=           1
+                seedval=        1526
+                debug=           0
+ Starting photon transport...
+ All photons processed. Writing...
+ Done.
