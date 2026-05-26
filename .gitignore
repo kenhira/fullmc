@@ -1,1 +1,12 @@
-book/
+# Python-related
+__pycache__/
+*.pyc
+
+# Fortran-related
+*.mod
+*.o
+*.so
+*.dylib
+*.dll
+
+exe_*
