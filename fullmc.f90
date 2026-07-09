@@ -11,7 +11,7 @@ program test_fullmc
     real(dp), allocatable :: kext(:,:,:), ksca(:,:,:), kabs(:,:,:), gparam(:,:,:)
     real(dp), allocatable :: komg(:,:,:)
     real(dp), allocatable :: galb(:,:), bplnk(:,:,:), bgrnd(:,:)
-    integer  :: source, swlw, transfer_mode
+    integer  :: source, swlw, transfer_mode, derivative_mode
     real(dp) :: solmu, solphi
     real(dp) :: viewmu, viewphi
     integer  :: seedval
@@ -41,6 +41,12 @@ program test_fullmc
     real(dp) :: notindsrc
     real(dp) :: rdist
     real(dp) :: weight_absorbed, new_weight
+    real(dp), allocatable :: phtrace1(:,:,:)
+    real(dp):: phtrace1_diff
+    real(dp), allocatable :: rectrace1(:,:,:,:)
+    real(dp), allocatable :: outtrace1(:,:,:,:)
+    real(dp) :: trace10, trace11
+    character(len=16) :: ixtext, iytext, iztext
     real(dp) :: weight_min, weight_rr
     logical  :: survived
     real(dp) :: g, mu, phi, sint
@@ -82,6 +88,7 @@ program test_fullmc
     read(iuconf,*) dx, dy, dz
     read(iuconf,*) source, swlw
     read(iuconf,*) transfer_mode
+    read(iuconf,*) derivative_mode
     read(iuconf,*) solmu, solphi
     read(iuconf,*) viewmu, viewphi
     read(iuconf,*) nphoton
@@ -95,6 +102,7 @@ program test_fullmc
     write(*,*) '               source=', source
     write(*,*) '               swlw=', swlw
     write(*,*) '               transfer_mode=', transfer_mode
+    write(*,*) '               derivative_mode=', derivative_mode
     write(*,*) '               seedval=', seedval
     write(*,*) '               wgttype=', wgttype
     write(*,*) '               debug=', debug
@@ -148,6 +156,7 @@ program test_fullmc
             end if
         end do
     end do
+    close(iuconf)
     !-- End of configuration file reading
 
     allocate(xarr(0:nx), yarr(0:ny), zarr(0:nz))
@@ -237,6 +246,15 @@ program test_fullmc
     allocate(phconv(0:nx-1,0:ny-1,0:nz-1))
     allocate(phimg(0:nx-1,0:ny-1))
 
+    if (derivative_mode == 1) then
+        allocate(phtrace1(0:nx-1,0:ny-1,0:nz-1))
+        allocate(rectrace1(0:nx-1,0:ny-1,0:nz-1,0:1))
+        allocate(outtrace1(0:nx-1,0:ny-1,0:nz-1,0:1))
+        phtrace1(:, :, :) = 0.0_dp
+        rectrace1(:, :, :, :) = 0.0_dp
+        outtrace1(:, :, :, :) = 0.0_dp
+    end if
+
     itmax = 100000
     itlpbmax = 100000
 
@@ -275,6 +293,11 @@ program test_fullmc
     do ix = 0, nx - 1 ! X
     do iy = 0, ny - 1 ! Y
     do iz = nzmin, nzmax  ! Z
+
+    if (derivative_mode == 1) then
+        rectrace1(:, :, :, :) = 0.0_dp
+    endif
+
     do ia = 0, namax  ! Sides
 
     if ((source == 3) .and. (iz < 0) .and. (ia /= 5)) cycle ! top sources only at ground level
@@ -297,6 +320,9 @@ program test_fullmc
     phflx(:, :, :, :, :) = 0.0_dp
     phconv(:, :, :) = 0.0_dp
     phimg(:, :) = 0.0_dp
+    if (derivative_mode == 1) then
+        phtrace1(:, :, :) = 0.0_dp
+    end if
 
     !<< Sampling >>
     if (source <= 1) then
@@ -327,6 +353,10 @@ program test_fullmc
             ! weight_absorbed = weight * (1.0_dp - exp(-kabs_grid * rdist))
             ! new_weight = weight - weight_absorbed
             call weight_calc(weight, 1, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+            if (derivative_mode == 1) then
+                phtrace1_diff = 1. - rdist * ksca_grid
+                phtrace1(rind(0), rind(1), rind(2)) = phtrace1(rind(0), rind(1), rind(2)) + phtrace1_diff
+            end if
 
             !<< Sampling >>
             ! call sample_scattering(weight_absorbed, new_weight, source, ia, scaord, swlw, &
@@ -373,6 +403,10 @@ program test_fullmc
             ! weight_absorbed = weight * (1.0_dp - exp(-kabs_grid * rdist))
             ! new_weight = weight - weight_absorbed
             call weight_calc(weight, 0, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+            if (derivative_mode == 1) then
+                phtrace1_diff = 1. - rdist * ksca_grid
+                phtrace1(rind(0), rind(1), rind(2)) = phtrace1(rind(0), rind(1), rind(2)) + phtrace1_diff
+            end if
 
             !<< Sampling >>
             call recorder_boundary(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
@@ -485,9 +519,48 @@ program test_fullmc
     else if (source == 4) then
         recind(0:2) = (/ix, iy, 0/)
         call store_d3(phimg, recimg, recind, nx, ny)
+        if (derivative_mode == 1) then
+            ! trace1
+            do irx = 0, nx - 1
+            recind(0) = irx
+            do iry = 0, ny - 1
+            recind(1) = iry
+            do irz = 0, nz - 1
+            recind(2) = irz
+            call store_d4(phtrace1*phimg(ix,iy), rectrace1, recind, nx, ny, nz)
+            end do ! iz
+            end do ! iy
+            end do ! ix
+            ! end trace1
+        endif
     end if
     end do ! iphoton
     end do ! ia
+
+    if (derivative_mode == 1) then
+    if (source == 4) then ! tracer output
+        escale = 1.0_dp
+        nphotot = real(nphoton, dp) * escale
+        do irx = 0, nx-1
+        do iry = 0, ny-1
+        do irz = 0, nz-1
+            trace10 = rectrace1(irx,iry,irz,0) * escale / nphotot
+            trace11 = (rectrace1(irx,iry,irz,1) * escale**2 / nphotot - trace10**2) / (nphotot - 1.0_dp)
+            outtrace1(irx,iry,irz,0) = trace10
+            outtrace1(irx,iry,irz,1) = trace11
+        end do ! iz
+        end do ! iy
+        end do ! irx
+        write(ixtext, '(I5.5)') ix
+        write(iytext, '(I5.5)') iy
+        write(iztext, '(I5.5)') iz
+        write(*,*) "Writing trace1 output at:", nx, ny, nz
+        call write_output_d4(outtrace1(0:nx-1,0:ny-1,0:nz-1,0:1), nx, ny, nz, nphoton, &
+            trim(line)//"/outtrace1_x"//trim(ixtext)//"_y"//trim(iytext)//"_z"//trim(iztext)//".txt")
+    end if
+    end if
+
+
     end do ! iz
     end do ! iy
     end do ! ix
@@ -633,6 +706,9 @@ program test_fullmc
     deallocate(recflx)
     deallocate(recconv)
     deallocate(recimg)
+    if (derivative_mode == 1) then
+        deallocate(rectrace1)
+    end if
 
     write(*,*) "Preparing output arrays..."
 

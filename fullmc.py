@@ -1,3 +1,4 @@
+import glob
 import os
 import numpy as np
 import multiprocessing as mp
@@ -18,7 +19,8 @@ class FullMC:
                  dx = None,
                  dy = None,
                  dz = None,
-                 transfermode = None, 
+                 transfermode = None,
+                 derivative = 0,
                  source = None,
                  swlw = None,
                  solmu = None,
@@ -54,7 +56,7 @@ class FullMC:
         self.seedval = seedval
         self.wgttype = wgttype
         self.debug = debug
-
+        self.derivative = derivative
         if kext is None:
             self.kext = np.full((nx, ny, nz), np.nan, dtype=np.float64)
         else:
@@ -133,6 +135,7 @@ class FullMC:
             fh.write("%g %g %g\n" % (self.dx, self.dy, self.dz))
             fh.write("%d %d\n" % (self.source, self.swlw))
             fh.write("%d\n" % self.transfermode)
+            fh.write("%d\n" % self.derivative)
             fh.write("%g %g\n" % (self.solmu, self.solphi))
             fh.write("%g %g\n" % (self.viewmu, self.viewphi))
             fh.write("%d\n" % int(self.nphoton))
@@ -181,6 +184,8 @@ class FullMC:
                 outrad, nphoton = self.read_result_irr_single(self.wrkdir)
             elif kind == 'conv':
                 outrad, nphoton = self.read_result_conv_single(self.wrkdir)
+            elif kind == 'tracer1':
+                outrad, nphoton = self.read_result_tracer1_single(self.wrkdir)
         else:
             outrad_pts = []
             npho_pts = []
@@ -192,6 +197,8 @@ class FullMC:
                     outrad_part, nphoton = self.read_result_irr_single(work_dir)
                 elif kind == 'conv':
                     outrad_part, nphoton = self.read_result_conv_single(work_dir)
+                elif kind == 'tracer1':
+                    outrad_part, nphoton = self.read_result_tracer1_single(work_dir)
                 outrad_pts.append(outrad_part)
                 npho_pts.append(nphoton)
             npho_tot = sum(npho_pts)
@@ -250,3 +257,27 @@ class FullMC:
                         radconv[ix, iy, iz, 0] = float(parts[0])
                         radconv[ix, iy, iz, 1] = float(parts[1])
         return radconv, nphoton
+    
+    def read_result_tracer1_single(self, workdir):
+        with open(f'{workdir}/outtrace1_x00000_y00000_z00000.txt', 'r') as fh:
+            header = fh.readline()  # skip header
+            dims_line = fh.readline()
+            nx, ny, nz, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+        radtracer1_all = np.zeros((nx, ny, nx, ny, nz, ncomp), dtype=np.float64)
+        for ifx in range(nx):
+            for ify in range(ny):
+                filename = f'{workdir}/outtrace1_x{ifx:05d}_y{ify:05d}_z00000.txt'
+                with open(filename, 'r') as fh:
+                    header = fh.readline()  # skip header
+                    dims_line = fh.readline()
+                    nx, ny, nz, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+                    radtracer1 = np.zeros((nx, ny, nz, ncomp), dtype=np.float64)
+                    for ix in range(nx):
+                        for iy in range(ny):
+                            for iz in range(nz):
+                                line = fh.readline()
+                                parts = line.strip().split()
+                                radtracer1[ix, iy, iz, 0] = float(parts[0])
+                                radtracer1[ix, iy, iz, 1] = float(parts[1])
+                radtracer1_all[ifx, ify, :, :, :, :] = radtracer1
+        return radtracer1_all, nphoton

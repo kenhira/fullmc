@@ -1,5 +1,5 @@
 FC = gfortran
-FFLAGS = -g -O0 -fbacktrace -fbounds-check -fcheck=all -Wall
+FFLAGS = -g -O0 -fbacktrace -fbounds-check -fcheck=all -Wall -ffree-line-length-512
 SRC = fullmc_funcs.f90 fullmc.f90
 OBJ = $(SRC:.f90=.o)
 TARGET = exe_fullmc

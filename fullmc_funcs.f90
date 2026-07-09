@@ -361,12 +361,12 @@ module fullmc_funcs
             ! Top of model
             call random_number(rnd); rloc(0) = xarr(ix) + rnd * dx
             call random_number(rnd); rloc(1) = yarr(iy) + rnd * dy
-            rloc(0) = mod(rloc(0) + maxx, maxx)
-            rloc(1) = mod(rloc(1) + maxy, maxy)
+            rloc(0) = modulo(rloc(0) + maxx, maxx)
+            rloc(1) = modulo(rloc(1) + maxy, maxy)
             rloc(2) = maxz
 
-            rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-            rindsrc(1) = mod(int( rloc(1) / dy ), ny)
+            rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+            rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
             rindsrc(2) = nz
             rind(0) = rindsrc(0)
             rind(1) = rindsrc(1)
@@ -376,13 +376,13 @@ module fullmc_funcs
             call random_number(rnd); rloc(0) = xarr(ix) + rnd * dx
             call random_number(rnd); rloc(1) = yarr(iy) + rnd * dy
             call random_number(rnd); rloc(2) = zarr(iz) + rnd * dz
-            rloc(0) = mod(rloc(0) + maxx, maxx)
-            rloc(1) = mod(rloc(1) + maxy, maxy)
-            rloc(2) = mod(rloc(2) + maxz, maxz)
+            rloc(0) = modulo(rloc(0) + maxx, maxx)
+            rloc(1) = modulo(rloc(1) + maxy, maxy)
+            rloc(2) = modulo(rloc(2) + maxz, maxz)
             
-            rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-            rindsrc(1) = mod(int( rloc(1) / dy ), ny)
-            rindsrc(2) = mod(int( rloc(2) / dz ), nz)
+            rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+            rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
+            rindsrc(2) = modulo(int( rloc(2) / dz ), nz)
             rind(0:2) = rindsrc(0:2)
         else if (source == 3) then
             ! Grid sides
@@ -390,65 +390,65 @@ module fullmc_funcs
                 rloc(0) = xarr(ix)
                 call random_number(rnd); rloc(1) = yarr(iy) + rnd * dy
                 call random_number(rnd); rloc(2) = zarr(iz) + rnd * dz
-                rindsrc(0) = mod(int((rloc(0) + 1.0e-8_dp) / dx ), nx)
-                rindsrc(1) = mod(int( rloc(1) / dy ), ny)
-                rindsrc(2) = mod(int( rloc(2) / dz ), nz)
+                rindsrc(0) = modulo(int((rloc(0) + 1.0e-8_dp) / dx ), nx)
+                rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
+                rindsrc(2) = modulo(int( rloc(2) / dz ), nz)
             else if (ia == 1) then ! x-
                 rloc(0) = xarr(ix + 1)
                 call random_number(rnd); rloc(1) = yarr(iy) + rnd * dy
                 call random_number(rnd); rloc(2) = zarr(iz) + rnd * dz
-                rindsrc(0) = mod(int((rloc(0) - 1.0e-8_dp) / dx ), nx)
-                rindsrc(1) = mod(int( rloc(1) / dy ), ny)
-                rindsrc(2) = mod(int( rloc(2) / dz ), nz)
+                rindsrc(0) = modulo(int((rloc(0) - 1.0e-8_dp) / dx ), nx)
+                rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
+                rindsrc(2) = modulo(int( rloc(2) / dz ), nz)
             else if (ia == 2) then ! y+
                 call random_number(rnd); rloc(0) = xarr(ix) + rnd * dx
                 rloc(1) = yarr(iy)
                 call random_number(rnd); rloc(2) = zarr(iz) + rnd * dz
-                rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-                rindsrc(1) = mod(int((rloc(1) + 1.0e-8_dp) / dy ), ny)
-                rindsrc(2) = mod(int( rloc(2) / dz ), nz)
+                rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+                rindsrc(1) = modulo(int((rloc(1) + 1.0e-8_dp) / dy ), ny)
+                rindsrc(2) = modulo(int( rloc(2) / dz ), nz)
             else if (ia == 3) then ! y-
                 call random_number(rnd); rloc(0) = xarr(ix) + rnd * dx
                 rloc(1) = yarr(iy + 1)
                 call random_number(rnd); rloc(2) = zarr(iz) + rnd * dz
-                rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-                rindsrc(1) = mod(int((rloc(1) - 1.0e-8_dp) / dy ), ny)
-                rindsrc(2) = mod(int( rloc(2) / dz ), nz)
+                rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+                rindsrc(1) = modulo(int((rloc(1) - 1.0e-8_dp) / dy ), ny)
+                rindsrc(2) = modulo(int( rloc(2) / dz ), nz)
             else if (ia == 4) then ! z+
                 call random_number(rnd); rloc(0) = xarr(ix) + rnd * dx
                 call random_number(rnd); rloc(1) = yarr(iy) + rnd * dy
                 rloc(2) = zarr(iz)
-                rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-                rindsrc(1) = mod(int( rloc(1) / dy ), ny)
+                rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+                rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
                 rindsrc(2) = int(floor((rloc(2) + 1.0e-8_dp) / dz ))
             else if (ia == 5) then ! z-
                 call random_number(rnd); rloc(0) = xarr(ix) + rnd * dx
                 call random_number(rnd); rloc(1) = yarr(iy) + rnd * dy
                 rloc(2) = zarr(iz + 1)
-                rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-                rindsrc(1) = mod(int( rloc(1) / dy ), ny)
+                rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+                rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
                 rindsrc(2) = int(floor((rloc(2) - 1.0e-8_dp) / dz ))
             end if
             rind(0:2) = max(rindsrc(0:2), 0)
         else if (source == 4) then
             if (transfer_mode == 0) then
-                rloc(0) = xarr(ix) + mod(0.5_dp * dx + dirview(0) * maxz / abs(dirview(2)) + dx, dx)
-                rloc(1) = yarr(iy) + mod(0.5_dp * dy + dirview(1) * maxz / abs(dirview(2)) + dy, dy)
+                rloc(0) = xarr(ix) + modulo(0.5_dp * dx + dirview(0) * maxz / abs(dirview(2)) + dx, dx)
+                rloc(1) = yarr(iy) + modulo(0.5_dp * dy + dirview(1) * maxz / abs(dirview(2)) + dy, dy)
             else if (transfer_mode == 1) then
-                rloc(0) = mod(xarr(ix) + 0.5_dp * dx + dirview(0) * maxz / abs(dirview(2)) + maxx, maxx)
-                rloc(1) = mod(yarr(iy) + 0.5_dp * dy + dirview(1) * maxz / abs(dirview(2)) + maxy, maxy)
+                rloc(0) = modulo(xarr(ix) + 0.5_dp * dx + dirview(0) * maxz / abs(dirview(2)) + maxx, maxx)
+                rloc(1) = modulo(yarr(iy) + 0.5_dp * dy + dirview(1) * maxz / abs(dirview(2)) + maxy, maxy)
             end if
             rloc(2) = maxz
 
-            rind(0) = mod(int( rloc(0) / dx ), nx)
-            rind(1) = mod(int( rloc(1) / dy ), ny)
-            rind(2) = mod(int((rloc(2) - 1.0e-8_dp) / dz ), nz)
+            rind(0) = modulo(int( rloc(0) / dx ), nx)
+            rind(1) = modulo(int( rloc(1) / dy ), ny)
+            rind(2) = modulo(int((rloc(2) - 1.0e-8_dp) / dz ), nz)
             rindsrc(0) = ix
             rindsrc(1) = iy
             rindsrc(2) = nz - 1
-            ! rindsrc(0) = mod(int( rloc(0) / dx ), nx)
-            ! rindsrc(1) = mod(int( rloc(1) / dy ), ny)
-            ! rindsrc(2) = mod(int((rloc(2) - 1.0e-8_dp) / dz ), nz)
+            ! rindsrc(0) = modulo(int( rloc(0) / dx ), nx)
+            ! rindsrc(1) = modulo(int( rloc(1) / dy ), ny)
+            ! rindsrc(2) = modulo(int((rloc(2) - 1.0e-8_dp) / dz ), nz)
             ! rind(0:2) = rindsrc(0:2)
         end if
     end subroutine photon_initloc
@@ -635,11 +635,11 @@ module fullmc_funcs
         r5ind2(0:2) = r5ind(0:2)
         r5ind2(icase) = r5ind(icase) + 2 * isign - 1
         ! wrap x,y
-        r5ind(0) = mod(r5ind2(0) + nx, nx) * transfer_mode + (1 - transfer_mode) * r5ind(0)
-        r5ind(1) = mod(r5ind2(1) + ny, ny) * transfer_mode + (1 - transfer_mode) * r5ind(1)
+        r5ind(0) = modulo(r5ind2(0) + nx, nx) * transfer_mode + (1 - transfer_mode) * r5ind(0)
+        r5ind(1) = modulo(r5ind2(1) + ny, ny) * transfer_mode + (1 - transfer_mode) * r5ind(1)
         r5ind(2) = r5ind2(2)
-        ! rloc(0) = mod(rloc(0) + maxx, maxx) * real(isign) + (maxx - mod(maxx - rloc(0), maxx)) * real(1 - isign)
-        ! rloc(1) = mod(rloc(1) + maxy, maxy) * real(isign) + (maxy - mod(maxy - rloc(1), maxy)) * real(1 - isign)
+        ! rloc(0) = modulo(rloc(0) + maxx, maxx) * real(isign) + (maxx - modulo(maxx - rloc(0), maxx)) * real(1 - isign)
+        ! rloc(1) = modulo(rloc(1) + maxy, maxy) * real(isign) + (maxy - modulo(maxy - rloc(1), maxy)) * real(1 - isign)
         r5loc(icase) = merge( &
             real(r5ind(icase), dp) * dxs(icase) * real(isign, dp) + real(r5ind(icase) + 1, dp) * dxs(icase) * real(1 - isign, dp), &
             r5loc(icase), &
@@ -749,8 +749,8 @@ module fullmc_funcs
             ! rlpbind2(0:2) = rlpbind(0:2)
             ! rlpbind2(icase) = rlpbind(icase) + 2 * isign - 1
             ! ! wrap x,y
-            ! rlpbind(0) = mod(rlpbind2(0) + nx, nx) * transfer_mode + (1 - transfer_mode) * rlpbind(0)
-            ! rlpbind(1) = mod(rlpbind2(1) + ny, ny) * transfer_mode + (1 - transfer_mode) * rlpbind(1)
+            ! rlpbind(0) = modulo(rlpbind2(0) + nx, nx) * transfer_mode + (1 - transfer_mode) * rlpbind(0)
+            ! rlpbind(1) = modulo(rlpbind2(1) + ny, ny) * transfer_mode + (1 - transfer_mode) * rlpbind(1)
             ! rlpbind(2) = rlpbind2(2)
 
             ! rlpbloc(icase) = merge( &
