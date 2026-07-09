@@ -16,3 +16,6 @@ out*/*
 
 # files made during the book process
 book/
+
+# Mac files
+.DS_Store
