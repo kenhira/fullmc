@@ -13,3 +13,6 @@ exe_*
 
 # output files
 out*/*
+
+# files made during the book process
+book/
