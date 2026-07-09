@@ -10,3 +10,6 @@ __pycache__/
 *.dll
 
 exe_*
+
+# output files
+out*/*

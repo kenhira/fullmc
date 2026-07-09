@@ -4,6 +4,7 @@
                 source=           4
                 swlw=           1
                 transfer_mode=           0
+                derivative_mode=           0
                 seedval=         144
                 wgttype=           1
                 debug=           0
