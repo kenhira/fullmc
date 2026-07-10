@@ -18,9 +18,9 @@ if __name__ == '__main__':
     nx = 25
     ny = 1
     nz = 25
-    dx = 100.0
-    dy = 100.0
-    dz = 80.0
+    dx = 1000.0
+    dy = 1000.0
+    dz = 1000.0
 
     # transfermode = 0 # ICA
     transfermode = 1 # 3D
@@ -41,8 +41,8 @@ if __name__ == '__main__':
     swlw = 1 # SW
     # nphoton = 1
     # nphoton = 2e1
-    # nphoton = 1e2
-    nphoton = 5e3
+    nphoton = 1e2
+    # nphoton = 5e3
     # nphoton = 2e4
     # nphoton = 5e4
 
@@ -60,9 +60,11 @@ if __name__ == '__main__':
 
     # Ncpu = None
     Ncpu = 8
+    # Ncpu = 32
 
-    # taua_values = np.logspace(-5, 1, 4)
-    taua_values = np.logspace(-3.2, 0.2, 18)
+    # taua_values = np.logspace(-3, 0, 4)
+    # taua_values = np.logspace(-3.2, 0.2, 18)
+    taua_values = np.linspace(0.01, 2, 4)
     radimg1_arr = np.full((len(taua_values), nx, ny, 2), np.nan, dtype=np.float64)
     radimg2_arr = np.full((len(taua_values), nx, ny, 2), np.nan, dtype=np.float64)
 
@@ -133,42 +135,44 @@ if __name__ == '__main__':
             'radimg2_arr': radimg2_arr,
         }, f)
 
+    taua_slant_values = taua_values * (1.0 / solmu + 1.0 / viewmu)
+    lntrans1_arr = np.log(np.pi*radimg1_arr)
+    lntrans2_arr = np.log(np.pi*radimg2_arr)
     for ix in range(nx):
         fig = plt.figure(figsize=(5, 7))
         ax = fig.add_subplot(2, 1, 1)
-        ax.set_xscale('log')
+        # ax.set_xscale('log')
         # ax.set_xlabel('Absorption Coefficient (1/m)')
-        ax.set_ylabel('Radiance (W/m^2/sr)')
-        ax.errorbar(taua_values, radimg1_arr[:, ix, 0, 0], yerr=radimg1_arr[:, ix, 0, 1], label='3D', fmt='o-', color='tab:blue', capsize=3, markersize=4)
-        ax.errorbar(taua_values, radimg2_arr[:, ix, 0, 0], yerr=radimg2_arr[:, ix, 0, 1], label='ICA', fmt='s--', color='tab:orange', capsize=3, markersize=4)
+        ax.set_ylabel('ln(transmittance)')
+        ax.plot(taua_slant_values, lntrans1_arr[:, ix, 0, 0], 'o-', label='3D', color='tab:blue', markersize=4)
+        ax.plot(taua_slant_values, lntrans2_arr[:, ix, 0, 0], 's-', label='ICA', color='tab:orange', markersize=4)
         ax.set_title('Radiance vs Absorption Optical Depth at X={:.1f} km'.format(ix*dx*1e-3))
         ax.legend()
-        ax.set_xlim(taua_values[0] * 0.9, taua_values[-1] * 1.1)
-        ax.set_ylim(0.0, None)
+        ax.set_xlim(taua_slant_values[0] * 0.9, taua_slant_values[-1] * 1.1)
+        # ax.set_ylim(0.0, None)
         ax2 = fig.add_subplot(2, 1, 2)
-        ax2.set_xscale('log')
+        # ax2.set_xscale('log')
         ax2.set_xlabel('Column absorption optical depth')
         ax2.set_ylabel('Ratio (3D/ICA)')
-        ratio = radimg1_arr[:, ix, 0, 0] / radimg2_arr[:, ix, 0, 0]
-        ratio_err = ratio * np.sqrt((radimg1_arr[:, ix, 0, 1] / radimg1_arr[:, ix, 0, 0])**2 + (radimg2_arr[:, ix, 0, 1] / radimg2_arr[:, ix, 0, 0])**2)
-        ax2.errorbar(taua_values, ratio, yerr=ratio_err, fmt='o-', color='tab:green', capsize=3, markersize=4)
+        ratio = lntrans1_arr[:, ix, 0, 0] / lntrans2_arr[:, ix, 0, 0]
+        ax2.plot(taua_slant_values, ratio, 'o-', label='Ratio (3D/ICA)', color='tab:green', markersize=4)
         # ax2.axhline(1.0, color='gray', linestyle='--')
-        ax2.set_xlim(taua_values[0] * 0.9, taua_values[-1] * 1.1)
+        ax2.set_xlim(taua_slant_values[0] * 0.9, taua_slant_values[-1] * 1.1)
         # ax2.set_ylim(0.0, None)
         fig.tight_layout()
         fig.savefig(f'{work_dir}/01_radtoa_radiance_vs_absorption_x{ix:02d}.png'.format(ix), dpi=300, bbox_inches='tight')
         plt.close(fig)
     
-    plot_data = radimg1_arr[0, :, 0, 0]
-    plot_data2 = radimg2_arr[0, :, 0, 0]
+    plot_data = np.pi*radimg1_arr[0, :, 0, 0]
+    plot_data2 = np.pi*radimg2_arr[0, :, 0, 0]
 
     fig = plt.figure(figsize=(5, 3.2))
     ax = fig.add_subplot(1, 1, 1)
     ax.plot(np.arange(nx) * dx * 1e-3, plot_data, 'o-', label='3D', color='tab:blue', markersize=4)
     ax.plot(np.arange(nx) * dx * 1e-3, plot_data2, 's--', label='ICA', color='tab:orange', markersize=4)
     ax.set_xlabel('X (km)')
-    ax.set_ylabel('Radiance (W/m^2/sr)')
-    ax.set_title('Radiance vs X at Absorption Optical Depth = {:.3e}'.format(taua_values[0]))
+    ax.set_ylabel('Reflectance')
+    ax.set_title('Reflectance vs X at Absorption Optical Depth = {:.3e}'.format(taua_values[0]))
     ax.legend()
     fig.savefig(f'{work_dir}/01_radtoa_radiance_vs_x.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
