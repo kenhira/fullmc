@@ -78,7 +78,9 @@ if __name__ == '__main__':
         taua_z_wv = f['o2a/optical_thickness/o2_layer'][0:nz, :]
         tau_rayleigh_z_wv = f['o2a/optical_thickness/rayleigh_layer'][0:nz, :]
     
-    index_sort = np.argsort(taua_values_wv)
+    index_sort_ = np.argsort(taua_values_wv)
+    ratio = 0.9
+    index_sort = index_sort_[:int(len(index_sort_)*ratio)] # only use the first 3/4 of the sorted values to avoid too large absorption optical depth
     wvl_all = wvl[index_sort]
     taua_values_all = taua_values_wv[index_sort]
     taua_z_all = taua_z_wv[:, index_sort]
