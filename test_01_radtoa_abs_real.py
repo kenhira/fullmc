@@ -11,8 +11,8 @@ from fullmc import *
 if __name__ == '__main__':
     work_dir = os.path.join('out', os.path.splitext(os.path.basename(__file__))[0])
 
-    # run = True
-    run = False
+    run = True
+    # run = False
 
     debug = 0
     # debug = 1
@@ -79,14 +79,15 @@ if __name__ == '__main__':
         tau_rayleigh_z_wv = f['o2a/optical_thickness/rayleigh_layer'][0:nz, :]
     
     index_sort_ = np.argsort(taua_values_wv)
-    ratio = 0.9
-    index_sort = index_sort_[:int(len(index_sort_)*ratio)] # only use the first 3/4 of the sorted values to avoid too large absorption optical depth
+    ratio_dn = 0.1
+    ratio_up = 0.9
+    index_sort = index_sort_[int(len(index_sort_)*ratio_dn):int(len(index_sort_)*ratio_up)]
     wvl_all = wvl[index_sort]
     taua_values_all = taua_values_wv[index_sort]
     taua_z_all = taua_z_wv[:, index_sort]
     taur_z_all = tau_rayleigh_z_wv[:, index_sort]
 
-    index_sparse = np.arange(0, len(taua_values_all), 10)
+    index_sparse = np.arange(0, len(taua_values_all), 3000)
 
     wvls = wvl_all[index_sparse]
     taua_values = taua_values_all[index_sparse]
@@ -98,58 +99,85 @@ if __name__ == '__main__':
     radimg2_arr = np.full((len(taua_values), nx, ny, 2), np.nan, dtype=np.float64)
 
     if run:
-        for iabsv, taua_value in enumerate(taua_values):
-            print('iabsv = %d/%d, taua_value = %.3e' % (iabsv+1, len(taua_values), taua_value))
-
-            fmc = FullMC(
-                    nx=nx, ny=ny, nz=nz,
-                    dx=dx, dy=dy, dz=dz,
-                    transfermode=transfermode,
-                    source=source,
-                    swlw=swlw,
-                    solmu=solmu, solphi=solphi,
-                    viewmu=viewmu, viewphi=viewphi,
-                    nphoton=nphoton,
-                    debug=debug,
-                    Ncpu=Ncpu,
-                    wrkdir=work_dir,
-                )
-
-            ksca = np.zeros((nx, ny, nz), dtype=np.float64)
-            kabs = np.zeros((nx, ny, nz), dtype=np.float64)
-            gparam = np.zeros((nx, ny, nz), dtype=np.float64)
-            
-            # ksca[:, :, :] = 1e-6
-            # ksca[nx//5*2:nx//5*3, 0:ny, 4:6] = 5e-1
-            # kabs[:, :, :] = taua_value / (dz * nz)
-            # gparam[:, :, :] = 0.0001
-            # gparam[nx//5*2:nx//5*3, 0:ny, 4:6] = 0.85
-            ksca[:, :, :] = taur_z[:, iabsv][np.newaxis, np.newaxis, :] / dz
-            ksca[nx//5*2:nx//5*3, 0:ny, 4:6] += 1e-1
-            kabs[:, :, :] = taua_z[:, iabsv][np.newaxis, np.newaxis, :] / dz
-            gparam[:, :, :] = 0.0001
-            gparam[nx//5*2:nx//5*3, 0:ny, 4:6] = 0.85
-
-            fmc.kext[:, :, :] = kabs + ksca
-            fmc.kabs[:, :, :] = kabs
-            fmc.gparam[:, :, :] = gparam
-            fmc.bplnk[:, :, :] = 0.0
-            fmc.bgrnd[:, :] = 0.0
-            fmc.galb[:, :] = 0.3
-
-            # fmc.read_atmtxt('dat/mod/les_mod_02.txt')
-
-            fmc.run_mc()
-            radimg1 = fmc.read_result(kind='img')
-
-            fmc2 = fmc
-            fmc2.transfermode = 0 # ICA
-
-            fmc2.run_mc()
-            radimg2 = fmc2.read_result(kind='img')
-
-            radimg1_arr[iabsv, :, :, :] = radimg1[:, :, :]
-            radimg2_arr[iabsv, :, :, :] = radimg2[:, :, :]
+        # for iabsv, taua_value in enumerate(taua_values):
+        #     print('iabsv = %d/%d, taua_value = %.3e' % (iabsv+1, len(taua_values), taua_value))
+        #     fmc = FullMC(
+        #             nx=nx, ny=ny, nz=nz,
+        #             dx=dx, dy=dy, dz=dz,
+        #             transfermode=transfermode,
+        #             source=source,
+        #             swlw=swlw,
+        #             solmu=solmu, solphi=solphi,
+        #             viewmu=viewmu, viewphi=viewphi,
+        #             nphoton=nphoton,
+        #             debug=debug,
+        #             Ncpu=Ncpu,
+        #             wrkdir=work_dir,
+        #         )
+        #     ksca = np.zeros((nx, ny, nz), dtype=np.float64)
+        #     kabs = np.zeros((nx, ny, nz), dtype=np.float64)
+        #     gparam = np.zeros((nx, ny, nz), dtype=np.float64)
+        #     # ksca[:, :, :] = 1e-6
+        #     # ksca[nx//5*2:nx//5*3, 0:ny, 4:6] = 5e-1
+        #     # kabs[:, :, :] = taua_value / (dz * nz)
+        #     # gparam[:, :, :] = 0.0001
+        #     # gparam[nx//5*2:nx//5*3, 0:ny, 4:6] = 0.85
+        #     ksca[:, :, :] = taur_z[:, iabsv][np.newaxis, np.newaxis, :] / dz
+        #     ksca[nx//5*2:nx//5*3, 0:ny, 4:6] += 1e-1
+        #     kabs[:, :, :] = taua_z[:, iabsv][np.newaxis, np.newaxis, :] / dz
+        #     gparam[:, :, :] = 0.0001
+        #     gparam[nx//5*2:nx//5*3, 0:ny, 4:6] = 0.85
+        #     fmc.ksca[:, :, :] = ksca
+        #     fmc.kabs[:, :, :, 0] = kabs
+        #     fmc.gparam[:, :, :] = gparam
+        #     fmc.bplnk[:, :, :] = 0.0
+        #     fmc.bgrnd[:, :] = 0.0
+        #     fmc.galb[:, :] = 0.3
+        #     # fmc.read_atmtxt('dat/mod/les_mod_02.txt')
+        #     fmc.run_mc()
+        #     radimg1 = fmc.read_result(kind='img')
+        #     fmc2 = fmc
+        #     fmc2.transfermode = 0 # ICA
+        #     fmc2.run_mc()
+        #     radimg2 = fmc2.read_result(kind='img')
+        #     radimg1_arr[iabsv, :, :, :] = radimg1[:, :, :]
+        #     radimg2_arr[iabsv, :, :, :] = radimg2[:, :, :]
+        fmc = FullMC(
+            nx=nx, ny=ny, nz=nz,
+            dx=dx, dy=dy, dz=dz,
+            ng=len(taua_values),
+            transfermode=transfermode,
+            source=source,
+            swlw=swlw,
+            solmu=solmu, solphi=solphi,
+            viewmu=viewmu, viewphi=viewphi,
+            nphoton=nphoton,
+            debug=debug,
+            Ncpu=Ncpu,
+            wrkdir=work_dir,
+        )
+        ksca = np.zeros((nx, ny, nz), dtype=np.float64)
+        kabs = np.zeros((nx, ny, nz, len(taua_values)), dtype=np.float64)
+        gparam = np.zeros((nx, ny, nz), dtype=np.float64)
+        ksca[:, :, :] = taur_z[:, 0][np.newaxis, np.newaxis, :] / dz
+        ksca[nx//5*2:nx//5*3, 0:ny, 4:6] += 1e-1
+        kabs[:, :, :, :] = taua_z[:, :][np.newaxis, np.newaxis, :, :] / dz
+        gparam[:, :, :] = 0.0001
+        gparam[nx//5*2:nx//5*3, 0:ny, 4:6] = 0.85
+        fmc.ksca[:, :, :] = ksca
+        fmc.kabs[:, :, :, :] = kabs
+        fmc.gparam[:, :, :] = gparam
+        fmc.bplnk[:, :, :] = 0.0
+        fmc.bgrnd[:, :] = 0.0
+        fmc.galb[:, :] = 0.3
+        fmc.run_mc()
+        radimg1 = fmc.read_result(kind='img')
+        fmc2 = fmc
+        fmc2.transfermode = 0 # ICA
+        fmc2.run_mc()
+        radimg2 = fmc2.read_result(kind='img')
+        radimg1_arr[:, :, :, :] = radimg1[:, :, :, :].transpose(2, 0, 1, 3)
+        radimg2_arr[:, :, :, :] = radimg2[:, :, :, :].transpose(2, 0, 1, 3)
         
         pkl_dir = os.path.join(work_dir, 'pkl')
         if not os.path.exists(pkl_dir):
@@ -292,7 +320,7 @@ if __name__ == '__main__':
         fig.savefig(f'{work_dir}/01_radtoa_radiance_vs_x_{iabs:05d}.png', dpi=300, bbox_inches='tight')
         plt.close(fig)
 
-    plot_data1 = (fmc.kext[:, 0, :] - fmc.kabs[:, 0, :])
+    plot_data1 = fmc.ksca[:, 0, :]
     xx, zz = np.meshgrid(np.linspace(0.0, nx * dx * 1e-3, nx), np.linspace(0.0, nz * dz * 1e-3, nz))
 
     fig = plt.figure(figsize=(5, 3.2))

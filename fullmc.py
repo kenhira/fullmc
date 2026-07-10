@@ -19,6 +19,7 @@ class FullMC:
                  dx = None,
                  dy = None,
                  dz = None,
+                 ng = 1,
                  transfermode = None,
                  derivative = 0,
                  source = None,
@@ -31,7 +32,7 @@ class FullMC:
                  seedval = 1,
                  wgttype = 1,
                  debug = 0,
-                 kext = None,
+                 ksca = None,
                  kabs = None,
                  gparam = None,
                  bplnk = None,
@@ -45,6 +46,7 @@ class FullMC:
         self.dx = dx
         self.dy = dy
         self.dz = dz
+        self.ng = ng
         self.transfermode = transfermode
         self.source = source
         self.swlw = swlw
@@ -57,12 +59,12 @@ class FullMC:
         self.wgttype = wgttype
         self.debug = debug
         self.derivative = derivative
-        if kext is None:
-            self.kext = np.full((nx, ny, nz), np.nan, dtype=np.float64)
+        if ksca is None:
+            self.ksca = np.full((nx, ny, nz), np.nan, dtype=np.float64)
         else:
-            self.kext = kext
+            self.ksca = ksca
         if kabs is None:
-            self.kabs = np.full((nx, ny, nz), np.nan, dtype=np.float64)
+            self.kabs = np.full((nx, ny, nz, ng), np.nan, dtype=np.float64)
         else:
             self.kabs = kabs
         if gparam is None:
@@ -87,6 +89,7 @@ class FullMC:
             self.Ncpu = min(Ncpu, mp.cpu_count())
             print(f'Using {self.Ncpu} CPU cores.')
         self.wrkdir = wrkdir
+        self.g_sort = np.arange(ng, dtype=np.int32)
     
     def read_atmtxt(self, infile, emission=False, tair=273.0, tgrnd=300.0):
         with open(infile, 'r') as fh:
@@ -100,8 +103,9 @@ class FullMC:
                     for iz in range(self.nz):
                         line = fh.readline()
                         parts = line.strip().split()
-                        self.kext[ix, iy, iz] = float(parts[0])
-                        self.kabs[ix, iy, iz] = float(parts[1])
+                        kext_xyz = float(parts[0])
+                        self.kabs[ix, iy, iz, :] = float(parts[1])
+                        self.ksca[ix, iy, iz] = kext_xyz - self.kabs[ix, iy, iz, 0]
                         self.gparam[ix, iy, iz] = float(parts[2])
             if emission:
                 line = fh.readline()
@@ -129,11 +133,14 @@ class FullMC:
                 self.write_config_single(work_dir)
 
     def write_config_single(self, workdir):
+        self.g_sort = np.argsort(np.mean(self.kabs[:, :, :, :], axis=(0, 1, 2)))[::-1]
+        self.kabs[:, :, :, :] = self.kabs[:, :, :, self.g_sort]
         with open(f'{workdir}/config.txt', 'w') as fh:
             self.seedval = self.seedval + 11
             fh.write("%d %d %d\n" % (self.nx, self.ny, self.nz))
             fh.write("%g %g %g\n" % (self.dx, self.dy, self.dz))
             fh.write("%d %d\n" % (self.source, self.swlw))
+            fh.write("%d\n" % self.ng)
             fh.write("%d\n" % self.transfermode)
             fh.write("%d\n" % self.derivative)
             fh.write("%g %g\n" % (self.solmu, self.solphi))
@@ -145,15 +152,23 @@ class FullMC:
             for ix in range(self.nx):
                 for iy in range(self.ny):
                     for iz in range(self.nz):
-                        if self.kext[ix,iy,iz] != self.kext[ix,iy,iz]:
-                            raise ValueError("kext contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
-                        if self.kabs[ix,iy,iz] != self.kabs[ix,iy,iz]:
-                            raise ValueError("kabs contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
+                        # if self.kext[ix,iy,iz] != self.kext[ix,iy,iz]:
+                        #     raise ValueError("kext contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
+                        if self.ksca[ix,iy,iz] != self.ksca[ix,iy,iz]:
+                            raise ValueError("ksca contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
+                        for ig in range(self.ng):
+                            if self.kabs[ix,iy,iz,ig] != self.kabs[ix,iy,iz,ig]:
+                                raise ValueError("kabs contains NaN values at index (%d,%d,%d,%d)." % (ix,iy,iz,ig))
+                        # if self.kabs[ix,iy,iz] != self.kabs[ix,iy,iz]:
+                        #     raise ValueError("kabs contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
                         if self.gparam[ix,iy,iz] != self.gparam[ix,iy,iz]:
                             raise ValueError("gparam contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
                         if self.bplnk[ix,iy,iz] != self.bplnk[ix,iy,iz]:
                             raise ValueError("bplnk contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
-                        fh.write("%15.6e %15.6e %15.6e %15.6e\n" % (self.kext[ix,iy,iz], self.kabs[ix,iy,iz], self.gparam[ix,iy,iz], self.bplnk[ix,iy,iz]))
+                        # fh.write("%15.6e %15.6e %15.6e %15.6e\n" % (self.kext[ix,iy,iz], self.kabs[ix,iy,iz], self.gparam[ix,iy,iz], self.bplnk[ix,iy,iz]))
+                        fh.write("%15.6e %15.6e %15.6e\n" % (self.ksca[ix,iy,iz], self.gparam[ix,iy,iz], self.bplnk[ix,iy,iz]))
+                        txtabs = " ".join(["%15.6e" % self.kabs[ix,iy,iz,ig] for ig in range(self.ng)])
+                        fh.write(txtabs + "\n")
                     if self.galb[ix,iy] != self.galb[ix,iy]:
                         raise ValueError("galb contains NaN values at index (%d,%d)." % (ix,iy))
                     if self.bgrnd[ix,iy] != self.bgrnd[ix,iy]:
@@ -206,78 +221,87 @@ class FullMC:
             for iproc in range(self.Ncpu):
                 outrad[..., 0] += outrad_pts[iproc][..., 0] * npho_pts[iproc] / npho_tot
                 outrad[..., 1] += outrad_pts[iproc][..., 1] * npho_pts[iproc]*(npho_pts[iproc] - 1) / (npho_tot*(npho_tot - 1))
-        return outrad
-    
+            outrad_final = np.zeros_like(outrad, dtype=np.float64)
+            if outrad.shape[-2] == 1: # ng
+                outrad_final = outrad[..., 0, :]
+            else:
+                outrad_final[..., self.g_sort[::-1], :] = outrad[..., :, :]
+        return outrad_final
+
     def read_result_img_single(self, workdir):
         with open(f'{workdir}/outradimg.txt', 'r') as fh:
             header = fh.readline()  # skip header
             dims_line = fh.readline()
-            nx, ny, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+            nx, ny, ng, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
             
-            radimg = np.zeros((nx, ny, ncomp), dtype=np.float64)
+            radimg = np.zeros((nx, ny, ng, ncomp), dtype=np.float64)
             for ix in range(nx):
                 for iy in range(ny):
-                    # for icase in range(ncase):
-                    line = fh.readline()
-                    parts = line.strip().split()
-                    radimg[ix, iy, 0] = float(parts[0])
-                    radimg[ix, iy, 1] = float(parts[1])
+                    for ig in range(ng):
+                        # for icase in range(ncase):
+                        line = fh.readline()
+                        parts = line.strip().split()
+                        radimg[ix, iy, ig, 0] = float(parts[0])
+                        radimg[ix, iy, ig, 1] = float(parts[1])
         return radimg, nphoton
 
     def read_result_irr_single(self, workdir):
         with open(f'{workdir}/outradirr.txt', 'r') as fh:
             header = fh.readline()  # skip header
             dims_line = fh.readline()
-            nx, ny, nz, nd, na, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+            nx, ny, nz, nd, na, ng, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
             
-            radirr = np.zeros((nx, ny, nz, nd, na, ncomp), dtype=np.float64)
+            radirr = np.zeros((nx, ny, nz, nd, na, ng, ncomp), dtype=np.float64)
             for ix in range(nx):
                 for iy in range(ny):
                     for iz in range(nz):
                         for idi in range(nd):
                             for ia in range(na):
-                                line = fh.readline()
-                                parts = line.strip().split()
-                                radirr[ix, iy, iz, idi, ia, 0] = float(parts[0])
-                                radirr[ix, iy, iz, idi, ia, 1] = float(parts[1])
+                                for ig in range(ng):
+                                    line = fh.readline()
+                                    parts = line.strip().split()
+                                    radirr[ix, iy, iz, idi, ia, ig, 0] = float(parts[0])
+                                    radirr[ix, iy, iz, idi, ia, ig, 1] = float(parts[1])
         return radirr, nphoton
     
     def read_result_conv_single(self, workdir):
         with open(f'{workdir}/outradconv.txt', 'r') as fh:
             header = fh.readline()  # skip header
             dims_line = fh.readline()
-            nx, ny, nz, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+            nx, ny, nz, ng, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
             
-            radconv = np.zeros((nx, ny, nz, ncomp), dtype=np.float64)
+            radconv = np.zeros((nx, ny, nz, ng, ncomp), dtype=np.float64)
             for ix in range(nx):
                 for iy in range(ny):
                     for iz in range(nz):
-                        line = fh.readline()
-                        parts = line.strip().split()
-                        radconv[ix, iy, iz, 0] = float(parts[0])
-                        radconv[ix, iy, iz, 1] = float(parts[1])
+                        for ig in range(ng):
+                            line = fh.readline()
+                            parts = line.strip().split()
+                            radconv[ix, iy, iz, ig, 0] = float(parts[0])
+                            radconv[ix, iy, iz, ig, 1] = float(parts[1])
         return radconv, nphoton
     
     def read_result_tracer1_single(self, workdir):
         with open(f'{workdir}/outtrace1_x00000_y00000_z00000.txt', 'r') as fh:
             header = fh.readline()  # skip header
             dims_line = fh.readline()
-            nx, ny, nz, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
-        radtracer1_all = np.zeros((nx, ny, nx, ny, nz, ncomp), dtype=np.float64)
+            nx, ny, nz, ng, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+        radtracer1_all = np.zeros((nx, ny, nx, ny, nz, ng, ncomp), dtype=np.float64)
         for ifx in range(nx):
             for ify in range(ny):
                 filename = f'{workdir}/outtrace1_x{ifx:05d}_y{ify:05d}_z00000.txt'
                 with open(filename, 'r') as fh:
                     header = fh.readline()  # skip header
                     dims_line = fh.readline()
-                    nx, ny, nz, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
-                    radtracer1 = np.zeros((nx, ny, nz, ncomp), dtype=np.float64)
+                    nx, ny, nz, ng, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+                    radtracer1 = np.zeros((nx, ny, nz, ng, ncomp), dtype=np.float64)
                     for ix in range(nx):
                         for iy in range(ny):
                             for iz in range(nz):
-                                line = fh.readline()
-                                parts = line.strip().split()
-                                radtracer1[ix, iy, iz, 0] = float(parts[0])
-                                radtracer1[ix, iy, iz, 1] = float(parts[1])
+                                for ig in range(ng):
+                                    line = fh.readline()
+                                    parts = line.strip().split()
+                                    radtracer1[ix, iy, iz, ig, 0] = float(parts[0])
+                                    radtracer1[ix, iy, iz, ig, 1] = float(parts[1])
                 radtracer1_all[ifx, ify, :, :, :, :] = radtracer1
         return radtracer1_all, nphoton

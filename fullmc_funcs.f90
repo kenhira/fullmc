@@ -5,40 +5,40 @@ module fullmc_funcs
 
     abstract interface
         subroutine rec_scat_iface(weight_absorbed, new_weight, ia, scaord, swlw, &
-            nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+            nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
             integer, parameter :: dp = selected_real_kind(15, 307)
             integer, intent(in) :: ia, scaord, swlw
-            integer, intent(in) :: nx, ny, nz
+            integer, intent(in) :: nx, ny, nz, ng
             integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
             integer, intent(in) :: transfer_mode
             integer, intent(in) :: rind(0:2), rindsrc(0:2)
-            real(dp), intent(in) :: weight_absorbed, new_weight
+            real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
             real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
             real(dp), intent(in) :: dxs(0:2)
             integer, intent(in) :: itlpbmax
-            real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+            real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
             real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
             real(dp), intent(in) :: gparam(0:nx-1,0:ny-1,0:nz-1)
             real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-            real(dp), intent(inout) :: vqllpb
-            real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
-            real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-            real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
+            real(dp), intent(inout) :: vqllpb(:)
+            real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
+            real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+            real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
         end subroutine rec_scat_iface
 
         subroutine rec_bound_iface(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, phflx, phconv, bplnk)
+            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
             integer, intent(in) :: ia, scaord, swlw, icase, isign
-            integer, intent(in) :: nx, ny, nz
+            integer, intent(in) :: nx, ny, nz, ng
             integer, intent(in) :: rind(0:2), rindsrc(0:2)
-            real(dp), intent(in) :: weight_absorbed, new_weight
+            real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
             real(dp), intent(in) :: rdir(0:2)
-            real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-            real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
+            real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+            real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
             real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
             real(dp) :: notindsrc, vqla
         end subroutine rec_bound_iface
@@ -53,231 +53,240 @@ module fullmc_funcs
         subroutine wgt_calc_iface(weight_old, collision, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
-            real(dp), intent(in) :: weight_old
+            real(dp), intent(in) :: weight_old(:)
             integer, intent(in) :: collision
-            real(dp), intent(in) :: kabs_grid, rdist, komg_grid
-            real(dp), intent(out) :: weight_absorbed, new_weight
+            real(dp), intent(in) :: kabs_grid(:), rdist, komg_grid(:)
+            real(dp), intent(out) :: weight_absorbed(:), new_weight(:)
         end subroutine wgt_calc_iface
     end interface
 
     contains
 
     subroutine recorder_scat1(weight_absorbed, new_weight, ia, scaord, swlw, &
-            nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+            nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
         real(dp), intent(in) :: dxs(0:2)
         integer, intent(in) :: itlpbmax
-        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: gparam(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(inout) :: vqllpb
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
-        real(dp) :: notindsrc, vqla, mu, g_grid
+        real(dp), intent(inout) :: vqllpb(:)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1, ng)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
+        real(dp) :: notindsrc, mu, g_grid
+        ! real(dp) :: vqla
 
-        vqla = weight_absorbed
-        call sample_d4(vqla, phconv, rind, nx, ny, nz)
+        ! vqla = weight_absorbed
+        call sample_d4(weight_absorbed, phconv, rind, nx, ny, nz, ng)
 
     end subroutine recorder_scat1
 
     subroutine recorder_scat2(weight_absorbed, new_weight, ia, scaord, swlw, &
-            nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+            nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
         real(dp), intent(in) :: dxs(0:2)
         integer, intent(in) :: itlpbmax
-        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: gparam(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(inout) :: vqllpb
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
-        real(dp) :: notindsrc, vqla, mu, g_grid
+        real(dp), intent(inout) :: vqllpb(:)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
+        real(dp) :: notindsrc, mu, g_grid
+        ! real(dp) :: vqla
 
         notindsrc = 1.0_dp ! real(min(1, sum(abs(rind(0:2) - rindsrc(0:2)))), dp)
-        vqla = weight_absorbed * bplnk(rind(0), rind(1), rind(2)) * notindsrc
-        call sample_d4(vqla, phconv, rindsrc, nx, ny, nz)
+        call sample_d4(weight_absorbed(:) * bplnk(rind(0), rind(1), rind(2)) * notindsrc, &
+            phconv, rindsrc, nx, ny, nz, ng)
 
     end subroutine recorder_scat2
 
     subroutine recorder_scat3(weight_absorbed, new_weight, ia, scaord, swlw, &
-            nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+            nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
         real(dp), intent(in) :: dxs(0:2)
         integer, intent(in) :: itlpbmax
-        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: gparam(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(inout) :: vqllpb
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
-        real(dp) :: notindsrc, vqla, mu, g_grid
+        real(dp), intent(inout) :: vqllpb(:)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
+        real(dp) :: notindsrc, mu, g_grid
+        ! real(dp) :: vqla
 
-        vqla = weight_absorbed * bplnk(rind(0), rind(1), rind(2)) * 0.5_dp
-        call sample_d6(vqla, phflx, rindsrc, min(min(scaord, 1), swlw), ia, nx, ny, nz, swlw)
+        call sample_d6(weight_absorbed(:) * bplnk(rind(0), rind(1), rind(2)) * 0.5_dp, &
+            phflx, rindsrc, min(min(scaord, 1), swlw), ia, nx, ny, nz, ng, swlw)
 
     end subroutine recorder_scat3
     
     subroutine recorder_scat4(weight_absorbed, new_weight, ia, scaord, swlw, &
-            nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+            nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
         real(dp), intent(in) :: dxs(0:2)
         integer, intent(in) :: itlpbmax
-        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: gparam(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(inout) :: vqllpb
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
-        real(dp) :: notindsrc, vqla, mu, g_grid
+        real(dp), intent(inout) :: vqllpb(:)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
+        real(dp) :: notindsrc, mu, g_grid
+        ! real(dp) :: vqla
 
         if (swlw == 0) then
-            vqla = weight_absorbed * bplnk(rind(0), rind(1), rind(2))
-            ! call sample_d3(vqla, phimg, rindsrc, nx, ny)
+            call sample_d3(weight_absorbed(:) * bplnk(rind(0), rind(1), rind(2)), &
+                phimg, rindsrc, nx, ny, ng)
         else if (swlw == 1) then
-            call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, dxs, transfer_mode, &
+            call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, &
                 ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
             mu = -sum(dirsol(0:2) * rdir(0:2))
             g_grid = gparam(rind(0), rind(1), rind(2))
-            vqla = vqllpb * new_weight * (1.0_dp - g_grid**2) &
-                / (4.0_dp * pi * (1.0_dp + g_grid**2 - 2.0_dp * g_grid * mu)**1.5_dp * abs(dirsol(2)))
+            call sample_d3(vqllpb(:) * new_weight(:) * (1.0_dp - g_grid**2) &
+                / (4.0_dp * pi * (1.0_dp + g_grid**2 - 2.0_dp * g_grid * mu)**1.5_dp * abs(dirsol(2))), &
+                phimg, rindsrc, nx, ny, ng)
         end if
-        call sample_d3(vqla, phimg, rindsrc, nx, ny)
 
     end subroutine recorder_scat4
 
-    subroutine recorder_scat_null(weight_absorbed, new_weight, ia, scaord, swlw, &
+    subroutine recorder_scat_null(weight_absorbed, new_weight, ia, scaord, swlw, ng, &
             nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
-        integer, intent(in) :: ia, scaord, swlw
+        integer, intent(in) :: ia, scaord, swlw, ng
         integer, intent(in) :: nx, ny, nz
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
         real(dp), intent(in) :: dxs(0:2)
         integer, intent(in) :: itlpbmax
-        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: gparam(0:nx-1,0:ny-1,0:nz-1)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(inout) :: vqllpb
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
+        real(dp), intent(inout) :: vqllpb(:)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
         real(dp) :: notindsrc, vqla, mu, g_grid
         ! Do nothing...
     end subroutine recorder_scat_null
 
     subroutine recorder_bound1(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, phflx, phconv, bplnk)
+            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
         implicit none
-        integer, intent(in) :: ia, scaord, swlw, icase, isign
+        integer, intent(in) :: ia, scaord, swlw, icase, isign, ng
         integer, intent(in) :: nx, ny, nz
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rdir(0:2)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
-        real(dp) :: notindsrc, vqla
-        vqla = new_weight !* abs(rdir(icase))
-        call sample_d6(vqla, phflx, rind, min(min(scaord, 1), swlw), 2 * icase + isign, nx, ny, nz, swlw)
-        vqla = weight_absorbed
-        call sample_d4(vqla, phconv, rind, nx, ny, nz)
+        real(dp) :: notindsrc
+        ! real(dp) :: vqla
+        ! vqla = new_weight !* abs(rdir(icase))
+        call sample_d6(new_weight, phflx, rind, min(min(scaord, 1), swlw), 2 * icase + isign, nx, ny, nz, ng, swlw)
+        ! vqla = weight_absorbed
+        call sample_d4(weight_absorbed, phconv, rind, nx, ny, nz, ng)
     end subroutine recorder_bound1
 
     subroutine recorder_bound2(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, phflx, phconv, bplnk)
+            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
         implicit none
         integer, intent(in) :: ia, scaord, swlw, icase, isign
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rdir(0:2)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
-        real(dp) :: notindsrc, vqla
+        real(dp) :: notindsrc
+        ! real(dp) :: vqla
         notindsrc = 1.0_dp ! real(min(1, sum(abs(rind(0:2) - rindsrc(0:2)))), dp)
-        vqla = weight_absorbed * bplnk(rind(0), rind(1), rind(2)) * notindsrc
-        call sample_d4(vqla, phconv, rindsrc, nx, ny, nz)
+        ! vqla = weight_absorbed * bplnk(rind(0), rind(1), rind(2)) * notindsrc
+        call sample_d4(weight_absorbed * bplnk(rind(0), rind(1), rind(2)) * notindsrc, &
+            phconv, rindsrc, nx, ny, nz, ng)
     end subroutine recorder_bound2
 
     subroutine recorder_bound3(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, phflx, phconv, bplnk)
+            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
         implicit none
         integer, intent(in) :: ia, scaord, swlw, icase, isign
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rdir(0:2)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
-        real(dp) :: notindsrc, vqla
-        vqla = weight_absorbed * bplnk(rind(0), rind(1), rind(2)) * 0.5_dp
-        call sample_d6(vqla, phflx, rindsrc, min(min(scaord, 1), swlw), ia, nx, ny, nz, swlw)
+        real(dp) :: notindsrc
+        real(dp) :: vqla(ng)
+        vqla = weight_absorbed(:) * bplnk(rind(0), rind(1), rind(2)) * 0.5_dp
+        call sample_d6(vqla(:), &
+            phflx, rindsrc, min(min(scaord, 1), swlw), ia, nx, ny, nz, ng, swlw)
     end subroutine recorder_bound3
 
     subroutine recorder_bound_null(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, phflx, phconv, bplnk)
+            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
         implicit none
         integer, intent(in) :: ia, scaord, swlw, icase, isign
-        integer, intent(in) :: nx, ny, nz
+        integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
-        real(dp), intent(in) :: weight_absorbed, new_weight
+        real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rdir(0:2)
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
-        real(dp) :: notindsrc, vqla
+        real(dp) :: notindsrc
         ! Do nothing...
     end subroutine recorder_bound_null
 
@@ -298,10 +307,10 @@ module fullmc_funcs
     subroutine weight_calc1(weight_old, collision, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
-            real(dp), intent(in) :: weight_old
+            real(dp), intent(in) :: weight_old(:)
             integer, intent(in) :: collision
-            real(dp), intent(in) :: kabs_grid, rdist, komg_grid
-            real(dp), intent(out) :: weight_absorbed, new_weight
+            real(dp), intent(in) :: kabs_grid(:), rdist, komg_grid(:)
+            real(dp), intent(out) :: weight_absorbed(:), new_weight(:)
             weight_absorbed = weight_old * (1.0_dp - exp(-kabs_grid * rdist))
             new_weight = weight_old - weight_absorbed
     end subroutine weight_calc1
@@ -309,40 +318,40 @@ module fullmc_funcs
     subroutine weight_calc2(weight_old, collision, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
-            real(dp), intent(in) :: weight_old
+            real(dp), intent(in) :: weight_old(:)
             integer, intent(in) :: collision
-            real(dp), intent(in) :: kabs_grid, rdist, komg_grid
-            real(dp), intent(out) :: weight_absorbed, new_weight
+            real(dp), intent(in) :: kabs_grid(:), rdist, komg_grid(:)
+            real(dp), intent(out) :: weight_absorbed(:), new_weight(:)
             weight_absorbed = real(collision, dp) * weight_old * (1.0_dp - komg_grid)
             new_weight = weight_old - weight_absorbed
     end subroutine weight_calc2
 
-    subroutine sample_d6(vqla, phflx, rind, idi, iside, nx, ny, nz, swlw)
+    subroutine sample_d6(vqla, phflx, rind, idi, iside, nx, ny, nz, ng, swlw)
         implicit none
-        real(dp), intent(in) :: vqla
-        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
+        real(dp), intent(in) :: vqla(:)
+        real(dp), intent(inout) :: phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
         integer, intent(in) :: rind(0:2)
         integer, intent(in) :: idi, iside
-        integer, intent(in) :: nx, ny, nz, swlw
-        phflx(rind(0), rind(1), rind(2), idi, iside) = phflx(rind(0), rind(1), rind(2), idi, iside) + vqla
+        integer, intent(in) :: nx, ny, nz, swlw, ng
+        phflx(rind(0), rind(1), rind(2), idi, iside, :) = phflx(rind(0), rind(1), rind(2), idi, iside, :) + vqla(:)
     end subroutine sample_d6
 
-    subroutine sample_d4(vqla, phconv, rind, nx, ny, nz)
+    subroutine sample_d4(vqla, phconv, rind, nx, ny, nz, ng)
         implicit none
-        real(dp), intent(in) :: vqla
-        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1)
+        real(dp), intent(in) :: vqla(:)
+        real(dp), intent(inout) :: phconv(0:nx-1,0:ny-1,0:nz-1,ng)
         integer, intent(in) :: rind(0:2)
-        integer, intent(in) :: nx, ny, nz
-        phconv(rind(0), rind(1), rind(2)) = phconv(rind(0), rind(1), rind(2)) + vqla
+        integer, intent(in) :: nx, ny, nz, ng
+        phconv(rind(0), rind(1), rind(2), :) = phconv(rind(0), rind(1), rind(2), :) + vqla(:)
     end subroutine sample_d4
 
-    subroutine sample_d3(vqla, phimg, rind, nx, ny)
+    subroutine sample_d3(vqla, phimg, rind, nx, ny, ng)
         implicit none
-        real(dp), intent(in) :: vqla
-        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1)
+        real(dp), intent(in) :: vqla(:)
+        real(dp), intent(inout) :: phimg(0:nx-1,0:ny-1,ng)
         integer, intent(in) :: rind(0:2)
-        integer, intent(in) :: nx, ny
-        phimg(rind(0), rind(1)) = phimg(rind(0), rind(1)) + vqla
+        integer, intent(in) :: nx, ny, ng
+        phimg(rind(0), rind(1), :) = phimg(rind(0), rind(1), :) + vqla(:)
     end subroutine sample_d3
 
     subroutine photon_initloc(source, ix, iy, iz, ia, xarr, yarr, zarr, dx, dy, dz, nx, ny, nz, maxx, maxy, maxz, &
@@ -648,19 +657,21 @@ module fullmc_funcs
 
     subroutine photon_rroulette(new_weight, weight_min, weight_rr, survived)
         implicit none
-        real(dp), intent(inout) :: new_weight
+        real(dp), intent(inout) :: new_weight(:)
         real(dp), intent(in) :: weight_min, weight_rr
         logical, intent(out) :: survived
         ! integer, intent(in) :: debug
+        real(dp) :: max_weight
         real(dp) :: rnd
         survived = .true.
-        if (new_weight < weight_min) then
+        max_weight = maxval(new_weight(:))
+        if (max_weight < weight_min) then
             ! Russian Roulette
             ! if (debug == 1) then
             !     print *, "  Russian Roulette triggered. Weight before RR: ", new_weight
             ! end if
             call random_number(rnd)
-            if (rnd * weight_rr > new_weight) then
+            if (rnd * weight_rr > max_weight) then
                 ! photon terminated
                 ! if (debug == 1) then
                 !     print *, "  Photon terminated by RR."
@@ -668,7 +679,8 @@ module fullmc_funcs
                 ! exit
                 survived = .false.
             else
-                new_weight = weight_rr
+                ! new_weight = weight_rr
+                new_weight(:) = new_weight(:) * weight_rr / max_weight
                 ! if (debug == 1) then
                 !     print *, "  Photon survived RR. New Weight: ", new_weight
                 ! end if
@@ -676,28 +688,28 @@ module fullmc_funcs
         end if
     end subroutine photon_rroulette
 
-    subroutine photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, dxs, transfer_mode, &
+    subroutine photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, &
         ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         real(dp), intent(in) :: rloc(0:2)
         integer, intent(in) :: rind(0:2)
         real(dp), intent(in) :: dirsol(0:2)
         integer, intent(in) :: itlpbmax
-        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1)
+        integer, intent(in) :: nx, ny, nz, ng
+        real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        integer, intent(in) :: nx, ny, nz
         real(dp), intent(in) :: dxs(0:2)
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: ix, iy, iz, ia, iphoton, it
         integer, intent(in) :: debug
         integer, intent(in) :: iutraj
-        real(dp), intent(inout) :: vqllpb
+        real(dp), intent(inout) :: vqllpb(:)
         integer :: rlpbind(0:2), rlpbdir_sign(0:2), itlpb, icase, isign
         real(dp) :: rlpbloc(0:2), rlpbdir(0:2)
         real(dp) :: rdist, rdloc(0:2)
-        real(dp) :: kext_grid
+        ! real(dp) :: kext_grid
         logical :: survived
-        vqllpb = 1.0_dp
+        vqllpb(:) = 1.0_dp
         rlpbloc(0:2) = rloc(0:2)
         rlpbdir(0:2) = -dirsol(0:2)
         rlpbdir_sign(0:2) = max(0, min(1, ceiling(rlpbdir(0:2))))
@@ -712,7 +724,7 @@ module fullmc_funcs
                         rlpbdir(0), rlpbdir(1), rlpbdir(2), vqllpb, 0.0_dp
                 end if
             end if
-            kext_grid = kext(rlpbind(0), rlpbind(1), rlpbind(2))
+            ! kext_grid = kext(rlpbind(0), rlpbind(1), rlpbind(2), :)
 
             ! xbnd(0) = xarr(rlpbind(0))
             ! xbnd(1) = xarr(rlpbind(0)+1)
@@ -738,7 +750,7 @@ module fullmc_funcs
             ! (r5ind, r5loc, r5dir, r5dir_sign, xarr, yarr, zarr, rdist, rdloc, icase, isign)
 
 
-            vqllpb = vqllpb * exp(-kext_grid * rdist)
+            vqllpb(:) = vqllpb(:) * exp(-kext(rlpbind(0), rlpbind(1), rlpbind(2), :) * rdist)
 
             ! ! move to next boundary
             ! rlpbloc(0:2) = rlpbloc(0:2) + rlpbdir(0:2) * rdist
@@ -845,37 +857,37 @@ module fullmc_funcs
     !     end if
     ! end subroutine sample_scattering
 
-    subroutine store_d6(val, recflx, rind, idi, iside, nx, ny, nz, swlw)
+    subroutine store_d6(val, recflx, rind, idi, iside, nx, ny, nz, ng, swlw)
         implicit none
-        real(dp), intent(in) :: val(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5)
-        real(dp), intent(inout) :: recflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,0:1)
+        real(dp), intent(in) :: val(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng)
+        real(dp), intent(inout) :: recflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng,0:1)
         integer, intent(in) :: rind(0:2)
         integer, intent(in) :: idi, iside
-        integer, intent(in) :: nx, ny, nz, swlw
-        recflx(rind(0), rind(1), rind(2), idi, iside, 0) = &
-            recflx(rind(0), rind(1), rind(2), idi, iside, 0) + val(rind(0), rind(1), rind(2), idi, iside)
-        recflx(rind(0), rind(1), rind(2), idi, iside, 1) = &
-            recflx(rind(0), rind(1), rind(2), idi, iside, 1) + val(rind(0), rind(1), rind(2), idi, iside)**2.0_dp
+        integer, intent(in) :: nx, ny, nz, ng, swlw
+        recflx(rind(0), rind(1), rind(2), idi, iside, :, 0) = &
+            recflx(rind(0), rind(1), rind(2), idi, iside, :, 0) + val(rind(0), rind(1), rind(2), idi, iside, :)
+        recflx(rind(0), rind(1), rind(2), idi, iside, :, 1) = &
+            recflx(rind(0), rind(1), rind(2), idi, iside, :, 1) + val(rind(0), rind(1), rind(2), idi, iside, :)**2.0_dp
     end subroutine store_d6
 
-    subroutine store_d4(val, recconv, rind, nx, ny, nz)
+    subroutine store_d4(val, recconv, rind, nx, ny, nz, ng)
         implicit none
-        real(dp), intent(in) :: val(0:nx-1,0:ny-1,0:nz-1)
-        real(dp), intent(inout) :: recconv(0:nx-1,0:ny-1,0:nz-1,0:1)
+        real(dp), intent(in) :: val(0:nx-1,0:ny-1,0:nz-1,ng)
+        real(dp), intent(inout) :: recconv(0:nx-1,0:ny-1,0:nz-1,ng,0:1)
         integer, intent(in) :: rind(0:2)
-        integer, intent(in) :: nx, ny, nz
-        recconv(rind(0), rind(1), rind(2), 0) = recconv(rind(0), rind(1), rind(2), 0) + val(rind(0), rind(1), rind(2))
-        recconv(rind(0), rind(1), rind(2), 1) = recconv(rind(0), rind(1), rind(2), 1) + val(rind(0), rind(1), rind(2))**2.0_dp
+        integer, intent(in) :: nx, ny, nz, ng
+        recconv(rind(0), rind(1), rind(2), :, 0) = recconv(rind(0), rind(1), rind(2), :, 0) + val(rind(0), rind(1), rind(2), :)
+        recconv(rind(0), rind(1), rind(2), :, 1) = recconv(rind(0), rind(1), rind(2), :, 1) + val(rind(0), rind(1), rind(2), :)**2.0_dp
     end subroutine store_d4
 
-    subroutine store_d3(val, recimg, rind, nx, ny)
+    subroutine store_d3(val, recimg, rind, nx, ny, ng)
         implicit none
-        real(dp), intent(in) :: val(0:nx-1,0:ny-1)
-        real(dp), intent(inout) :: recimg(0:nx-1,0:ny-1,0:1)
+        real(dp), intent(in) :: val(0:nx-1,0:ny-1,ng)
+        real(dp), intent(inout) :: recimg(0:nx-1,0:ny-1,ng,0:1)
         integer, intent(in) :: rind(0:2)
-        integer, intent(in) :: nx, ny
-        recimg(rind(0), rind(1), 0) = recimg(rind(0), rind(1), 0) + val(rind(0), rind(1))
-        recimg(rind(0), rind(1), 1) = recimg(rind(0), rind(1), 1) + val(rind(0), rind(1))**2.0_dp
+        integer, intent(in) :: nx, ny, ng
+        recimg(rind(0), rind(1), :, 0) = recimg(rind(0), rind(1), :, 0) + val(rind(0), rind(1), :)
+        recimg(rind(0), rind(1), :, 1) = recimg(rind(0), rind(1), :, 1) + val(rind(0), rind(1), :)**2.0_dp
     end subroutine store_d3
 
     subroutine record_trajectory(iutraj, ix, iy, iz, ia, iphoton, it, step_type, itlpb, rloc, rind, rdir, weight, ptau)
@@ -887,36 +899,43 @@ module fullmc_funcs
         real(dp), intent(in) :: rloc(0:2)
         integer, intent(in) :: rind(0:2)
         real(dp), intent(in) :: rdir(0:2)
-        real(dp), intent(in) :: weight
+        real(dp), intent(in) :: weight(:)
         real(dp), intent(in) :: ptau
 
         write(iutraj,*) ix, iy, iz, ia, iphoton, it, step_type, itlpb, rloc(0), rloc(1), rloc(2), rind(0), rind(1), rind(2), &
-            rdir(0), rdir(1), rdir(2), weight, ptau
+            rdir(0), rdir(1), rdir(2), weight(1), ptau
     end subroutine record_trajectory
 
-    subroutine write_output_d6(outrad, nx, ny, nz, nd, na, nphoton, filename)
+    subroutine write_output_d6(outrad, nx, ny, nz, nd, na, ng, nphoton, filename)
         implicit none
-        real(dp), intent(in) :: outrad(0:nx-1,0:ny-1,0:nz-1,0:nd-1,0:na-1,0:1)
-        integer, intent(in) :: nx, ny, nz, nd, na, nphoton
+        real(dp), intent(in) :: outrad(0:nx-1,0:ny-1,0:nz-1,0:nd-1,0:na-1,ng,0:1)
+        integer, intent(in) :: nx, ny, nz, nd, na, ng, nphoton
         character(len=*), intent(in) :: filename
         real(dp) :: val, val2
-        integer :: unit, ix, iy, iz, idi, ia
+        integer :: unit, ix, iy, iz, idi, ia, ig
 
         unit = 10
         open(unit, file = filename, status = "replace", action = "write", form = "formatted")
 
-        write(unit, '(A)') "! nx ny nz nd na comp nphoton"
-        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, nd, na, 2, nphoton
+        write(unit, '(A)') "! nx ny nz nd na ng comp nphoton"
+        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, nd, na, ng, 2, nphoton
         do ix = 0, nx-1
             do iy = 0, ny-1
                 do iz = 0, nz-1
                     do idi = 0, nd-1
                         do ia = 0, na-1
-                            val = outrad(ix,iy,iz,idi,ia,0)
-                            val2 = outrad(ix,iy,iz,idi,ia,1)
-                            if (abs(val) < 1.0e-80_dp) val = 0.0_dp
-                            if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
-                            write(unit, '(E15.6, E15.6)') val, val2
+                            ! val = outrad(ix,iy,iz,idi,ia,0)
+                            ! val2 = outrad(ix,iy,iz,idi,ia,1)
+                            ! if (abs(val) < 1.0e-80_dp) val = 0.0_dp
+                            ! if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
+                            ! write(unit, '(E15.6, E15.6)') val, val2
+                            do ig = 1, ng
+                                val = outrad(ix,iy,iz,idi,ia,ig,0)
+                                val2 = outrad(ix,iy,iz,idi,ia,ig,1)
+                                if (abs(val) < 1.0e-80_dp) val = 0.0_dp
+                                if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
+                                write(unit, '(E15.6, E15.6)') val, val2
+                            end do
                         end do
                     end do
                 end do
@@ -926,32 +945,39 @@ module fullmc_funcs
         close(unit)
     end subroutine write_output_d6
 
-    subroutine write_output_d4(outrad, nx, ny, nz, nphoton, filename)
+    subroutine write_output_d4(outrad, nx, ny, nz, ng, nphoton, filename)
         implicit none
-        real(dp), intent(in) :: outrad(0:nx-1,0:ny-1,0:nz-1,0:1)
-        integer, intent(in) :: nx, ny, nz, nphoton
+        real(dp), intent(in) :: outrad(0:nx-1,0:ny-1,0:nz-1,ng,0:1)
+        integer, intent(in) :: nx, ny, nz, ng, nphoton
         character(len=*), intent(in) :: filename
         real(dp) :: val, val2
-        integer :: unit, ix, iy, iz
+        integer :: unit, ix, iy, iz, ig
 
         unit = 10
         open(unit, file = filename, status = "replace", action = "write", form = "formatted")
 
         ! write(unit, '(A)') "! nx ny nz ncase comp nphoton"
         ! write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, 3, 2, nphoton
-        write(unit, '(A)') "! nx ny nz comp nphoton"
-        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, 2, nphoton
+        write(unit, '(A)') "! nx ny nz ng comp nphoton"
+        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, ng, 2, nphoton
         do ix = 0, nx-1
             do iy = 0, ny-1
                 do iz = 0, nz-1
                     ! do icase = 0, 2
                         ! val = outrad(ix,iy,iz,icase,0)
                         ! val2 = (outrad(ix,iy,iz,icase,1) - val**2.0_dp) / real(nphoton, dp)
-                        val = outrad(ix,iy,iz,0)
-                        val2 = outrad(ix,iy,iz,1)
-                        if (abs(val) < 1.0e-80_dp) val = 0.0_dp
-                        if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
-                        write(unit, '(E15.6, E15.6)') val, val2
+                        ! val = outrad(ix,iy,iz,:,0)
+                        ! val2 = outrad(ix,iy,iz,:,1)
+                        ! if (abs(val) < 1.0e-80_dp) val = 0.0_dp
+                        ! if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
+                        ! write(unit, '(E15.6, E15.6)') val, val2
+                        do ig = 1, ng
+                            val = outrad(ix,iy,iz,ig,0)
+                            val2 = outrad(ix,iy,iz,ig,1)
+                            if (abs(val) < 1.0e-80_dp) val = 0.0_dp
+                            if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
+                            write(unit, '(E15.6, E15.6)') val, val2
+                        end do
                     ! end do
                 end do
             end do
@@ -960,26 +986,33 @@ module fullmc_funcs
         close(unit)
     end subroutine write_output_d4
 
-    subroutine write_output_d3(outrad, nx, ny, nphoton, filename)
+    subroutine write_output_d3(outrad, nx, ny, ng, nphoton, filename)
         implicit none
-        real(dp), intent(in) :: outrad(0:nx-1,0:ny-1,0:1)
-        integer, intent(in) :: nx, ny, nphoton
+        real(dp), intent(in) :: outrad(0:nx-1,0:ny-1,ng,0:1)
+        integer, intent(in) :: nx, ny, ng, nphoton
         character(len=*), intent(in) :: filename
         real(dp) :: val, val2
-        integer :: unit, ix, iy
+        integer :: unit, ix, iy, ig
 
         unit = 10
         open(unit, file = filename, status = "replace", action = "write", form = "formatted")
 
-        write(unit, '(A)') "! nx ny comp nphoton"
-        write(unit, '(I5,1X,I5,1X,I5,1X,I10)') nx, ny, 2, nphoton
+        write(unit, '(A)') "! nx ny ng comp nphoton"
+        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, ng, 2, nphoton
         do ix = 0, nx-1
             do iy = 0, ny-1
-                val = outrad(ix,iy,0)
-                val2 = outrad(ix,iy,1)
-                if (abs(val) < 1.0e-80_dp) val = 0.0_dp
-                if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
-                write(unit, '(E15.6, E15.6)') val, val2
+                ! val = outrad(ix,iy,0)
+                ! val2 = outrad(ix,iy,1)
+                ! if (abs(val) < 1.0e-80_dp) val = 0.0_dp
+                ! if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
+                ! write(unit, '(E15.6, E15.6)') val, val2
+                do ig = 1, ng
+                    val = outrad(ix,iy,ig,0)
+                    val2 = outrad(ix,iy,ig,1)
+                    if (abs(val) < 1.0e-80_dp) val = 0.0_dp
+                    if (abs(val2) < 1.0e-80_dp) val2 = 0.0_dp
+                    write(unit, '(E15.6, E15.6)') val, val2
+                end do
             end do
         end do
 

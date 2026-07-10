@@ -5,11 +5,13 @@ program test_fullmc
     character(len=256) :: line
     integer  :: nphoton
     integer  :: nx, ny, nz
+    integer  :: ng
     real(dp) :: dx, dy, dz
     real(dp) :: dxs(0:2)
     real(dp), allocatable :: xarr(:), yarr(:), zarr(:)
-    real(dp), allocatable :: kext(:,:,:), ksca(:,:,:), kabs(:,:,:), gparam(:,:,:)
-    real(dp), allocatable :: komg(:,:,:)
+    real(dp), allocatable :: kabs(:,:,:,:), kext(:,:,:,:)
+    real(dp), allocatable :: ksca(:,:,:), gparam(:,:,:)
+    real(dp), allocatable :: komg(:,:,:,:)
     real(dp), allocatable :: galb(:,:), bplnk(:,:,:), bgrnd(:,:)
     integer  :: source, swlw, transfer_mode, derivative_mode
     real(dp) :: solmu, solphi
@@ -30,21 +32,32 @@ program test_fullmc
     ! real(dp) :: xbnd(0:1), ybnd(0:1), zbnd(0:1), dc(0:2)
     real(dp) :: rdloc(0:2)
     real(dp) :: init_weight
-    real(dp) :: weight, ptau, rnd, vqla, vqllpb
-    real(dp) :: ksca_grid, kabs_grid, g_grid
-    real(dp) :: komg_grid
-    real(dp) :: kcol_grid
+    real(dp), allocatable :: weight(:)
+    real(dp), allocatable :: vqla(:)
+    real(dp), allocatable :: vqllpb(:)
+    real(dp) :: ptau, rnd
+    real(dp) :: ksca_grid
+    real(dp), allocatable :: kabs_grid(:)
+    real(dp), allocatable :: komg_grid(:)
+    real(dp):: g_grid
+    real(dp):: kcol_grid
+    ! real(dp) :: ksca_grid, kabs_grid, g_grid
+    ! real(dp) :: komg_grid
+    ! real(dp) :: kcol_grid
     ! real(dp) :: kext_grid
     integer  :: ix, iy, iz, ia
     integer  :: nzmin, nzmax, namax
     integer  :: icase, isign, idi
     real(dp) :: notindsrc
     real(dp) :: rdist
-    real(dp) :: weight_absorbed, new_weight
+    real(dp), allocatable :: weight_absorbed(:)
+    real(dp), allocatable :: new_weight(:)
+    ! real(dp) :: weight_absorbed, new_weight
     real(dp), allocatable :: phtrace1(:,:,:)
+    real(dp), allocatable :: phtrace1w(:,:,:,:)
     real(dp):: phtrace1_diff
-    real(dp), allocatable :: rectrace1(:,:,:,:)
-    real(dp), allocatable :: outtrace1(:,:,:,:)
+    real(dp), allocatable :: rectrace1(:,:,:,:,:)
+    real(dp), allocatable :: outtrace1(:,:,:,:,:)
     real(dp) :: trace10, trace11
     character(len=16) :: ixtext, iytext, iztext
     real(dp) :: weight_min, weight_rr
@@ -52,6 +65,7 @@ program test_fullmc
     real(dp) :: g, mu, phi, sint
     ! real(dp) :: s, ux, uy, uz, denom
     integer  :: recind(0:2), irx, iry, irz, irdi, ira
+    integer  :: ig, irg
     real(dp) :: nphotot
     real(dp) :: escale
     procedure(rec_scat_iface), pointer :: recorder_scattering => null()
@@ -59,10 +73,10 @@ program test_fullmc
     procedure(col_calc_iface), pointer :: collision_calc => null()
     procedure(wgt_calc_iface), pointer :: weight_calc => null()
 
-    real(dp), allocatable :: recflx(:,:,:,:,:,:), recconv(:,:,:,:), recimg(:,:,:)
-    real(dp), allocatable :: phflx(:,:,:,:,:), phconv(:,:,:), phimg(:,:)
-    real(dp), allocatable :: outflx(:,:,:,:,:,:), outconv(:,:,:,:), outimg(:,:,:)
-    real(dp), allocatable :: outflx_tmp(:,:,:,:,:,:)
+    real(dp), allocatable :: recflx(:,:,:,:,:,:,:), recconv(:,:,:,:,:), recimg(:,:,:,:)
+    real(dp), allocatable :: phflx(:,:,:,:,:,:), phconv(:,:,:,:), phimg(:,:,:)
+    real(dp), allocatable :: outflx(:,:,:,:,:,:,:), outconv(:,:,:,:,:), outimg(:,:,:,:)
+    real(dp), allocatable :: outflx_tmp(:,:,:,:,:,:,:)
     real(dp) :: flx0, flx1, conv0, conv1, img0, img1
     ! real(dp) :: pi = acos(-1.0_dp)
     integer  :: i
@@ -72,6 +86,7 @@ program test_fullmc
     integer, allocatable :: seed(:)
     integer  :: wgttype
     integer  :: debug
+    real(dp) :: time_0, time_1
     character(len=256) :: dbgmsg
 
     !-- Read configuration file name
@@ -87,6 +102,7 @@ program test_fullmc
     read(iuconf,*) nx, ny, nz
     read(iuconf,*) dx, dy, dz
     read(iuconf,*) source, swlw
+    read(iuconf,*) ng
     read(iuconf,*) transfer_mode
     read(iuconf,*) derivative_mode
     read(iuconf,*) solmu, solphi
@@ -98,6 +114,7 @@ program test_fullmc
 
     write(*,*) 'Configuration: nx=', nx, ' ny=', ny, ' nz=', nz
     write(*,*) '               dx=', dx, ' dy=', dy, ' dz=', dz
+    write(*,*) '               ng=', ng
     write(*,*) '               nphoton=', nphoton
     write(*,*) '               source=', source
     write(*,*) '               swlw=', swlw
@@ -107,42 +124,49 @@ program test_fullmc
     write(*,*) '               wgttype=', wgttype
     write(*,*) '               debug=', debug
 
-    allocate(kext(0:nx-1,0:ny-1,0:nz-1))
+    allocate(kext(0:nx-1,0:ny-1,0:nz-1,ng))
     allocate(ksca(0:nx-1,0:ny-1,0:nz-1))
-    allocate(komg(0:nx-1,0:ny-1,0:nz-1))
-    allocate(kabs(0:nx-1,0:ny-1,0:nz-1))
+    allocate(komg(0:nx-1,0:ny-1,0:nz-1,ng))
+    allocate(kabs(0:nx-1,0:ny-1,0:nz-1,ng))
     allocate(gparam(0:nx-1,0:ny-1,0:nz-1))
     allocate(galb(0:nx-1,0:ny-1))
     allocate(bplnk(0:nx-1,0:ny-1,0:nz-1))
     allocate(bgrnd(0:nx-1,0:ny-1))
+    allocate(kabs_grid(ng))
+    allocate(komg_grid(ng))
 
     do ix = 0, nx-1
         do iy = 0, ny-1
             do iz = 0, nz-1
-                read(iuconf,*) kext(ix,iy,iz), kabs(ix,iy,iz), gparam(ix,iy,iz), bplnk(ix,iy,iz)
-                ksca(ix,iy,iz) = kext(ix,iy,iz) - kabs(ix,iy,iz)
-                komg(ix,iy,iz) = ksca(ix,iy,iz) / kext(ix,iy,iz)
-                if (ksca(ix,iy,iz) < 0.0_dp) then
-                    write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Negative ksca at (", ix, ",", iy, ",", iz, "): ", ksca(ix,iy,iz)
-                    write(*,*) trim(dbgmsg)
-                    stop
-                else if (komg(ix,iy,iz) < 0.0_dp .or. komg(ix,iy,iz) > 1.0_dp) then
-                    write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Invalid komg at (", ix, ",", iy, ",", iz, "): ", komg(ix,iy,iz)
-                    write(*,*) trim(dbgmsg)
-                    stop
-                else if (kabs(ix,iy,iz) < 0.0_dp) then
-                    write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Negative kabs at (", ix, ",", iy, ",", iz, "): ", kabs(ix,iy,iz)
-                    write(*,*) trim(dbgmsg)
-                    stop
-                else if (gparam(ix,iy,iz) <= -1.0_dp .or. gparam(ix,iy,iz) >= 1.0_dp) then
-                    write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Invalid gparam at (", ix, ",", iy, ",", iz, "): ", gparam(ix,iy,iz)
-                    write(*,*) trim(dbgmsg)
-                    stop
-                else if (bplnk(ix,iy,iz) < 0.0_dp) then
-                    write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Negative bplnk at (", ix, ",", iy, ",", iz, "): ", bplnk(ix,iy,iz)
-                    write(*,*) trim(dbgmsg)
-                    stop
+                read(iuconf,*) ksca(ix,iy,iz), gparam(ix,iy,iz), bplnk(ix,iy,iz)
+                if (ng > 1) then
+                    read(iuconf,*) (kabs(ix,iy,iz,ig), ig=1,ng)
+                else
+                    read(iuconf,*) kabs(ix,iy,iz,1)
                 end if
+                kext(ix,iy,iz,:) = ksca(ix,iy,iz) + kabs(ix,iy,iz,:)
+                komg(ix,iy,iz,:) = ksca(ix,iy,iz) / kext(ix,iy,iz,:)
+                ! if (ksca(ix,iy,iz) < 0.0_dp) then
+                !     write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Negative ksca at (", ix, ",", iy, ",", iz, "): ", ksca(ix,iy,iz)
+                !     write(*,*) trim(dbgmsg)
+                !     stop
+                ! else if (komg(ix,iy,iz) < 0.0_dp .or. komg(ix,iy,iz) > 1.0_dp) then
+                !     write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Invalid komg at (", ix, ",", iy, ",", iz, "): ", komg(ix,iy,iz)
+                !     write(*,*) trim(dbgmsg)
+                !     stop
+                ! else if (kabs(ix,iy,iz) < 0.0_dp) then
+                !     write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Negative kabs at (", ix, ",", iy, ",", iz, "): ", kabs(ix,iy,iz)
+                !     write(*,*) trim(dbgmsg)
+                !     stop
+                ! else if (gparam(ix,iy,iz) <= -1.0_dp .or. gparam(ix,iy,iz) >= 1.0_dp) then
+                !     write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Invalid gparam at (", ix, ",", iy, ",", iz, "): ", gparam(ix,iy,iz)
+                !     write(*,*) trim(dbgmsg)
+                !     stop
+                ! else if (bplnk(ix,iy,iz) < 0.0_dp) then
+                !     write(dbgmsg, '(A,I4,A,I4,A,I4,A,F12.6)') "Error: Negative bplnk at (", ix, ",", iy, ",", iz, "): ", bplnk(ix,iy,iz)
+                !     write(*,*) trim(dbgmsg)
+                !     stop
+                ! end if
             end do
             read(iuconf,*) galb(ix,iy), bgrnd(ix,iy)
             if (galb(ix,iy) < 0.0_dp .or. galb(ix,iy) > 1.0_dp) then
@@ -176,6 +200,12 @@ program test_fullmc
     init_weight = 1.0_dp
     weight_min = 0.5_dp
     weight_rr = 0.5_dp
+
+    allocate(weight(ng))
+    allocate(weight_absorbed(ng))
+    allocate(new_weight(ng))
+    allocate(vqla(ng))
+    allocate(vqllpb(ng))
 
     dirsol(0) = sqrt(1.0_dp - solmu**2) * sin(solphi)
     dirsol(1) = sqrt(1.0_dp - solmu**2) * cos(solphi)
@@ -235,24 +265,26 @@ program test_fullmc
     end if
 
     
-    allocate(recflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,0:1))
-    allocate(recconv(0:nx-1,0:ny-1,0:nz-1,0:1))
-    allocate(recimg(0:nx-1,0:ny-1,0:1))
-    recflx(:, :, :, :, :, :) = 0.0_dp
-    recconv(:, :, :, :) = 0.0_dp
-    recimg(:, :, :) = 0.0_dp
+    allocate(recflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng,0:1))
+    allocate(recconv(0:nx-1,0:ny-1,0:nz-1,ng,0:1))
+    allocate(recimg(0:nx-1,0:ny-1,ng,0:1))
+    recflx(:, :, :, :, :, :, :) = 0.0_dp
+    recconv(:, :, :, :, :) = 0.0_dp
+    recimg(:, :, :, :) = 0.0_dp
 
-    allocate(phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5))
-    allocate(phconv(0:nx-1,0:ny-1,0:nz-1))
-    allocate(phimg(0:nx-1,0:ny-1))
+    allocate(phflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng))
+    allocate(phconv(0:nx-1,0:ny-1,0:nz-1,ng))
+    allocate(phimg(0:nx-1,0:ny-1,ng))
 
     if (derivative_mode == 1) then
         allocate(phtrace1(0:nx-1,0:ny-1,0:nz-1))
-        allocate(rectrace1(0:nx-1,0:ny-1,0:nz-1,0:1))
-        allocate(outtrace1(0:nx-1,0:ny-1,0:nz-1,0:1))
+        allocate(phtrace1w(0:nx-1,0:ny-1,0:nz-1,ng))
+        allocate(rectrace1(0:nx-1,0:ny-1,0:nz-1,ng,0:1))
+        allocate(outtrace1(0:nx-1,0:ny-1,0:nz-1,ng,0:1))
         phtrace1(:, :, :) = 0.0_dp
-        rectrace1(:, :, :, :) = 0.0_dp
-        outtrace1(:, :, :, :) = 0.0_dp
+        phtrace1w(:, :, :, :) = 0.0_dp
+        rectrace1(:, :, :, :, :) = 0.0_dp
+        outtrace1(:, :, :, :, :) = 0.0_dp
     end if
 
     itmax = 100000
@@ -265,6 +297,7 @@ program test_fullmc
     end if
 
     write(*,*) "Starting photon transport..."
+    call cpu_time(time_0)
 
     ! nzmax = merge(merge(0, nz - 1, source <= 1), 0, source <= 3)
     ! namax = merge(0, 5, source /= 3)
@@ -295,7 +328,7 @@ program test_fullmc
     do iz = nzmin, nzmax  ! Z
 
     if (derivative_mode == 1) then
-        rectrace1(:, :, :, :) = 0.0_dp
+        rectrace1(:, :, :, :, :) = 0.0_dp
     endif
 
     do ia = 0, namax  ! Sides
@@ -311,23 +344,23 @@ program test_fullmc
     !-- direction
     call photon_initdir(source, dirsol, dirview, rdir, rdir_sign, ia)
     !-- weight
-    weight = init_weight
+    weight(:) = init_weight
     !-- optical depth to next event
     call random_number(rnd); ptau = -log(max(1.0e-300_dp, rnd))
     !-- scattering order
     scaord = 0
 
-    phflx(:, :, :, :, :) = 0.0_dp
-    phconv(:, :, :) = 0.0_dp
-    phimg(:, :) = 0.0_dp
+    phflx(:, :, :, :, :, :) = 0.0_dp
+    phconv(:, :, :, :) = 0.0_dp
+    phimg(:, :, :) = 0.0_dp
     if (derivative_mode == 1) then
         phtrace1(:, :, :) = 0.0_dp
     end if
 
     !<< Sampling >>
     if (source <= 1) then
-        vqla = weight !* abs(rdir(2))
-        call sample_d6(vqla, phflx, rindsrc, min(min(scaord, 1), swlw), 4, nx, ny, nz, swlw)
+        vqla(:) = weight(:) !* abs(rdir(2))
+        call sample_d6(vqla, phflx, rindsrc, min(min(scaord, 1), swlw), 4, nx, ny, nz, ng, swlw)
     end if
 
     !-- Main photon transport iteration (it: number of grid crossing)
@@ -338,11 +371,11 @@ program test_fullmc
         if (debug == 2) call record_trajectory(iutraj, ix, iy, iz, ia, iphoton, it, 'a', 0, rloc, rind, rdir, weight, ptau)
 
         ksca_grid = ksca(rind(0), rind(1), rind(2))
-        kabs_grid = kabs(rind(0), rind(1), rind(2))
-        komg_grid = komg(rind(0), rind(1), rind(2))
+        kabs_grid(:) = kabs(rind(0), rind(1), rind(2), :)
+        komg_grid(:) = komg(rind(0), rind(1), rind(2), :)
         g_grid = gparam(rind(0), rind(1), rind(2))
 
-        call collision_calc(ksca_grid, kabs_grid, kcol_grid)
+        call collision_calc(ksca_grid, kabs_grid(1), kcol_grid)
 
         call photon_intersect(nx, ny, nz, rind, rloc, rdir, rdir_sign, xarr, yarr, zarr, rdist, rdloc, icase, isign)
 
@@ -364,7 +397,7 @@ program test_fullmc
             !     rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             !     ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
             call recorder_scattering(weight_absorbed, new_weight, ia, scaord, swlw, &
-                nx, ny, nz, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+                nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
                 rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
                 ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
             ! if (source <= 1) then
@@ -394,7 +427,7 @@ program test_fullmc
 
             call photon_rroulette(new_weight, weight_min, weight_rr, survived)
             if (.not. survived) exit
-            weight = new_weight
+            weight(:) = new_weight(:)
             call photon_scattering(g_grid, rdir, rdir_sign, ptau, scaord)
 
         else ! move to next boundary intersection
@@ -410,7 +443,7 @@ program test_fullmc
 
             !<< Sampling >>
             call recorder_boundary(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, phflx, phconv, bplnk)
+            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
             ! if (source <= 1) then
             !     vqla = new_weight !* abs(rdir(icase))
             !     call sample_d6(vqla, phflx, rind, min(min(scaord, 1), swlw), 2 * icase + isign, nx, ny, nz, swlw)
@@ -428,7 +461,7 @@ program test_fullmc
             call photon_rroulette(new_weight, weight_min, weight_rr, survived)
             if (.not. survived) exit
 
-            weight = new_weight
+            weight(:) = new_weight(:)
             call photon_movegrid(rind, rloc, rdir, rdist, icase, isign, nx, ny, dxs, transfer_mode)
             it = it + 1
 
@@ -441,40 +474,39 @@ program test_fullmc
                 if (debug == 1) write(*,*) "Photon hit the ground."
                 if (debug == 2) call record_trajectory(iutraj, ix, iy, iz, ia, iphoton, it, 'a', 0, rloc, rind, rdir, weight, ptau)
 
-                new_weight = weight * galb(rind(0), rind(1))
+                new_weight(:) = weight(:) * galb(rind(0), rind(1))
 
                 !<< Sampling >>
                 if (source == 2) then
-                    vqla = weight * (1.0_dp - galb(rind(0), rind(1))) * bgrnd(rind(0), rind(1))
-                    call sample_d4(vqla, phconv, rindsrc, nx, ny, nz)
+                    vqla(:) = weight(:) * (1.0_dp - galb(rind(0), rind(1))) * bgrnd(rind(0), rind(1))
+                    call sample_d4(vqla, phconv, rindsrc, nx, ny, nz, ng)
                 else if (source == 3) then
-                    vqla = weight * (1.0_dp - galb(rind(0), rind(1))) * bgrnd(rind(0), rind(1)) * 0.5_dp
-                    call sample_d6(vqla, phflx, rindsrc, min(min(scaord, 1), swlw), ia, nx, ny, nz, swlw)
+                    vqla(:) = weight(:) * (1.0_dp - galb(rind(0), rind(1))) * bgrnd(rind(0), rind(1)) * 0.5_dp
+                    call sample_d6(vqla, phflx, rindsrc, min(min(scaord, 1), swlw), ia, nx, ny, nz, ng, swlw)
                 else if (source == 4) then
                     if (swlw == 0) then
-                        vqla = weight * (1.0_dp - galb(rind(0), rind(1))) * bgrnd(rind(0), rind(1))
-                        ! call sample_d3(vqla, phimg, rindsrc, nx, ny)
+                        vqla(:) = weight(:) * (1.0_dp - galb(rind(0), rind(1))) * bgrnd(rind(0), rind(1))
                     else if (swlw == 1) then
                         rind(2) = 0
                         rloc(2) = 0.0_dp
                         ! rloc(2) = 0.0_dp + 1.0e-8_dp
-                        call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, dxs, transfer_mode, &
+                        call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, &
                             ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
-                        vqla = vqllpb * new_weight / pi
+                        vqla(:) = vqllpb(:) * new_weight(:) / pi
                     end if
-                    call sample_d3(vqla, phimg, rindsrc, nx, ny)
+                    call sample_d3(vqla, phimg, rindsrc, nx, ny, ng)
                 end if
 
                 call photon_rroulette(new_weight, weight_min, weight_rr, survived)
                 if (.not. survived) exit
                 call photon_reflection(rdir, rdir_sign, ptau, scaord)
-                weight = new_weight
+                weight(:) = new_weight(:)
 
                 !<< Sampling >>
                 if (source <= 1) then
                     ! rind(2) = -1
-                    vqla = weight !* abs(rdir(2))
-                    call sample_d6(vqla, phflx, rind, min(min(scaord, 1), swlw), 5, nx, ny, nz, swlw)
+                    vqla(:) = weight(:) !* abs(rdir(2))
+                    call sample_d6(vqla, phflx, rind, min(min(scaord, 1), swlw), 5, nx, ny, nz, ng, swlw)
                 end if
 
                 rind(2) = 0
@@ -498,27 +530,27 @@ program test_fullmc
             recind(2) = irz
             do irdi = 0, swlw
                 do ira = 0, 5
-                    call store_d6(phflx, recflx, recind, irdi, ira, nx, ny, nz, swlw)
+                    call store_d6(phflx, recflx, recind, irdi, ira, nx, ny, nz, ng, swlw)
                 end do
             end do
         end do ! iz
         do irz = 0, nz - 1
             recind(2) = irz
-            call store_d4(phconv, recconv, recind, nx, ny, nz)
+            call store_d4(phconv, recconv, recind, nx, ny, nz, ng)
         end do ! iz
         end do ! iy
         end do ! ix
     else if (source == 2) then
         recind(0:2) = (/ix, iy, iz/)
-        call store_d4(phconv, recconv, recind, nx, ny, nz)
+        call store_d4(phconv, recconv, recind, nx, ny, nz, ng)
     else if (source == 3) then
         recind(0:2) = (/ix, iy, iz/)
         do irdi = 0, swlw
-            call store_d6(phflx, recflx, recind, irdi, ia, nx, ny, nz, swlw)
+            call store_d6(phflx, recflx, recind, irdi, ia, nx, ny, nz, ng, swlw)
         end do
     else if (source == 4) then
         recind(0:2) = (/ix, iy, 0/)
-        call store_d3(phimg, recimg, recind, nx, ny)
+        call store_d3(phimg, recimg, recind, nx, ny, ng)
         if (derivative_mode == 1) then
             ! trace1
             do irx = 0, nx - 1
@@ -527,7 +559,8 @@ program test_fullmc
             recind(1) = iry
             do irz = 0, nz - 1
             recind(2) = irz
-            call store_d4(phtrace1*phimg(ix,iy), rectrace1, recind, nx, ny, nz)
+            phtrace1w(irx,iry,irz,:) = phtrace1(irx,iry,irz) * weight(:)
+            call store_d4(phtrace1w, rectrace1, recind, nx, ny, nz, ng)
             end do ! iz
             end do ! iy
             end do ! ix
@@ -544,10 +577,12 @@ program test_fullmc
         do irx = 0, nx-1
         do iry = 0, ny-1
         do irz = 0, nz-1
-            trace10 = rectrace1(irx,iry,irz,0) * escale / nphotot
-            trace11 = (rectrace1(irx,iry,irz,1) * escale**2 / nphotot - trace10**2) / (nphotot - 1.0_dp)
-            outtrace1(irx,iry,irz,0) = trace10
-            outtrace1(irx,iry,irz,1) = trace11
+        do ig = 1, ng
+            trace10 = rectrace1(irx,iry,irz,ig,0) * escale / nphotot
+            trace11 = (rectrace1(irx,iry,irz,ig,1) * escale**2 / nphotot - trace10**2) / (nphotot - 1.0_dp)
+            outtrace1(irx,iry,irz,ig,0) = trace10
+            outtrace1(irx,iry,irz,ig,1) = trace11
+        end do
         end do ! iz
         end do ! iy
         end do ! irx
@@ -555,7 +590,7 @@ program test_fullmc
         write(iytext, '(I5.5)') iy
         write(iztext, '(I5.5)') iz
         write(*,*) "Writing trace1 output at:", nx, ny, nz
-        call write_output_d4(outtrace1(0:nx-1,0:ny-1,0:nz-1,0:1), nx, ny, nz, nphoton, &
+        call write_output_d4(outtrace1(0:nx-1,0:ny-1,0:nz-1,:,0:1), nx, ny, nz, ng, nphoton, &
             trim(line)//"/outtrace1_x"//trim(ixtext)//"_y"//trim(iytext)//"_z"//trim(iztext)//".txt")
     end if
     end if
@@ -565,15 +600,17 @@ program test_fullmc
     end do ! iy
     end do ! ix
 
-    write(*,*) "Photon transport completed."
+    call cpu_time(time_1)
+    write(*,*) "Photon transport completed (", time_1 - time_0, "s)."
 
     if (debug >= 2) close(iutraj)
 
     write(*,*) "All photons processed. Writing..."
+    call cpu_time(time_0)
 
-    allocate(outflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,0:1))
-    allocate(outconv(0:nx-1,0:ny-1,0:nz-1,0:1))
-    allocate(outimg(0:nx-1,0:ny-1,0:1))
+    allocate(outflx(0:nx-1,0:ny-1,-1:nz,0:swlw,0:5,ng,0:1))
+    allocate(outconv(0:nx-1,0:ny-1,0:nz-1,ng,0:1))
+    allocate(outimg(0:nx-1,0:ny-1,ng,0:1))
 
     write(*,*) "Normalizing results..."
 
@@ -587,17 +624,23 @@ program test_fullmc
     do ix = 0, nx-1
     do iy = 0, ny-1
     do iz = -1, nz
-        do idi = 0, swlw
-            do icase = 0, 5
-                ! recflx(ix,iy,iz,idi,icase,0) = recflx(ix,iy,iz,idi,icase,0) / real(nphoton, dp)
-                ! recflx(ix,iy,iz,idi,icase,1) = recflx(ix,iy,iz,idi,icase,1) / real(nphoton, dp)
-                flx0 = recflx(ix,iy,iz,idi,icase,0) * escale / nphotot
-                flx1 = (recflx(ix,iy,iz,idi,icase,1) * escale**2 / nphotot - flx0**2) / (nphotot - 1.0_dp)
-                ! flx1 = recflx(ix,iy,iz,idi,icase,1) / real(nphoton, dp)
-                outflx(ix,iy,iz,idi,icase,0) = flx0
-                outflx(ix,iy,iz,idi,icase,1) = flx1
-            end do
-        end do
+    do idi = 0, swlw
+    do icase = 0, 5
+    do ig = 1, ng
+        ! ! recflx(ix,iy,iz,idi,icase,0) = recflx(ix,iy,iz,idi,icase,0) / real(nphoton, dp)
+        ! ! recflx(ix,iy,iz,idi,icase,1) = recflx(ix,iy,iz,idi,icase,1) / real(nphoton, dp)
+        ! flx0 = recflx(ix,iy,iz,idi,icase,0) * escale / nphotot
+        ! flx1 = (recflx(ix,iy,iz,idi,icase,1) * escale**2 / nphotot - flx0**2) / (nphotot - 1.0_dp)
+        ! ! flx1 = recflx(ix,iy,iz,idi,icase,1) / real(nphoton, dp)
+        ! outflx(ix,iy,iz,idi,icase,0) = flx0
+        ! outflx(ix,iy,iz,idi,icase,1) = flx1
+        flx0 = recflx(ix,iy,iz,idi,icase,ig,0) * escale / nphotot
+        flx1 = (recflx(ix,iy,iz,idi,icase,ig,1) * escale**2 / nphotot - flx0**2) / (nphotot - 1.0_dp)
+        outflx(ix,iy,iz,idi,icase,ig,0) = flx0
+        outflx(ix,iy,iz,idi,icase,ig,1) = flx1
+    end do
+    end do
+    end do
     end do ! iz
     end do ! iy
     end do ! ix
@@ -611,51 +654,81 @@ program test_fullmc
             ! recconv(ix,iy,iz,0:1) = 0.0_dp
             conv0 = 0.0_dp
             conv1 = 0.0_dp
+            do ig = 1, ng
             do idi = 0, swlw
-                ! recconv(ix,iy,iz,0) = &
-                ! - recflx(ix,iy,iz,idi,0,0) * dy * dz &
-                ! - recflx(ix,iy,iz,idi,1,0) * dy * dz &
-                ! - recflx(ix,iy,iz,idi,2,0) * dx * dz &
-                ! - recflx(ix,iy,iz,idi,3,0) * dx * dz &
-                ! - recflx(ix,iy,iz,idi,4,0) * dx * dy &
-                ! - recflx(ix,iy,iz,idi,5,0) * dx * dy &
-                ! + recflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,0) * dy * dz &
-                ! + recflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,0) * dy * dz &
-                ! + recflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,0) * dx * dz &
-                ! + recflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,0) * dx * dz &
-                ! + recflx(ix,iy,iz - 1,idi,5,0) * dx * dy &
-                ! + recflx(ix,iy,iz + 1,idi,4,0) * dx * dy
+                ! ! recconv(ix,iy,iz,0) = &
+                ! ! - recflx(ix,iy,iz,idi,0,0) * dy * dz &
+                ! ! - recflx(ix,iy,iz,idi,1,0) * dy * dz &
+                ! ! - recflx(ix,iy,iz,idi,2,0) * dx * dz &
+                ! ! - recflx(ix,iy,iz,idi,3,0) * dx * dz &
+                ! ! - recflx(ix,iy,iz,idi,4,0) * dx * dy &
+                ! ! - recflx(ix,iy,iz,idi,5,0) * dx * dy &
+                ! ! + recflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,0) * dy * dz &
+                ! ! + recflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,0) * dy * dz &
+                ! ! + recflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,0) * dx * dz &
+                ! ! + recflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,0) * dx * dz &
+                ! ! + recflx(ix,iy,iz - 1,idi,5,0) * dx * dy &
+                ! ! + recflx(ix,iy,iz + 1,idi,4,0) * dx * dy
+                ! conv0 = conv0 + &
+                !         (- outflx(ix,iy,iz,idi,0,0) * dy * dz &
+                !          - outflx(ix,iy,iz,idi,1,0) * dy * dz &
+                !          - outflx(ix,iy,iz,idi,2,0) * dx * dz &
+                !          - outflx(ix,iy,iz,idi,3,0) * dx * dz &
+                !          - outflx(ix,iy,iz,idi,4,0) * dx * dy &
+                !          - outflx(ix,iy,iz,idi,5,0) * dx * dy &
+                !          + outflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,0) * dy * dz &
+                !          + outflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,0) * dy * dz &
+                !          + outflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,0) * dx * dz &
+                !          + outflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,0) * dx * dz &
+                !          + outflx(ix,iy,iz - 1,idi,5,0) * dx * dy &
+                !          + outflx(ix,iy,iz + 1,idi,4,0) * dx * dy ) &
+                !          / (2.0_dp * dx * dy * dz)
+                ! conv1 = conv1 + &
+                !         (  outflx(ix,iy,iz,idi,0,1) * (dy * dz)**2 &
+                !          + outflx(ix,iy,iz,idi,1,1) * (dy * dz)**2 &
+                !          + outflx(ix,iy,iz,idi,2,1) * (dx * dz)**2 &
+                !          + outflx(ix,iy,iz,idi,3,1) * (dx * dz)**2 &
+                !          + outflx(ix,iy,iz,idi,4,1) * (dx * dy)**2 &
+                !          + outflx(ix,iy,iz,idi,5,1) * (dx * dy)**2 &
+                !          + outflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,1) * (dy * dz)**2 &
+                !          + outflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,1) * (dy * dz)**2 &
+                !          + outflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,1) * (dx * dz)**2 &
+                !          + outflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,1) * (dx * dz)**2 &
+                !          + outflx(ix,iy,iz - 1,idi,5,1) * (dx * dy)**2 &
+                !          + outflx(ix,iy,iz + 1,idi,4,1) * (dx * dy)**2 ) &
+                !          / ( (2.0_dp * dx * dy * dz)**2 )
                 conv0 = conv0 + &
-                        (- outflx(ix,iy,iz,idi,0,0) * dy * dz &
-                         - outflx(ix,iy,iz,idi,1,0) * dy * dz &
-                         - outflx(ix,iy,iz,idi,2,0) * dx * dz &
-                         - outflx(ix,iy,iz,idi,3,0) * dx * dz &
-                         - outflx(ix,iy,iz,idi,4,0) * dx * dy &
-                         - outflx(ix,iy,iz,idi,5,0) * dx * dy &
-                         + outflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,0) * dy * dz &
-                         + outflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,0) * dy * dz &
-                         + outflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,0) * dx * dz &
-                         + outflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,0) * dx * dz &
-                         + outflx(ix,iy,iz - 1,idi,5,0) * dx * dy &
-                         + outflx(ix,iy,iz + 1,idi,4,0) * dx * dy ) &
+                        (- outflx(ix,iy,iz,idi,0,ig,0) * dy * dz &
+                         - outflx(ix,iy,iz,idi,1,ig,0) * dy * dz &
+                         - outflx(ix,iy,iz,idi,2,ig,0) * dx * dz &
+                         - outflx(ix,iy,iz,idi,3,ig,0) * dx * dz &
+                         - outflx(ix,iy,iz,idi,4,ig,0) * dx * dy &
+                         - outflx(ix,iy,iz,idi,5,ig,0) * dx * dy &
+                         + outflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,ig,0) * dy * dz &
+                         + outflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,ig,0) * dy * dz &
+                         + outflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,ig,0) * dx * dz &
+                         + outflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,ig,0) * dx * dz &
+                         + outflx(ix,iy,iz - 1,idi,5,ig,0) * dx * dy &
+                         + outflx(ix,iy,iz + 1,idi,4,ig,0) * dx * dy ) &
                          / (2.0_dp * dx * dy * dz)
                 conv1 = conv1 + &
-                        (  outflx(ix,iy,iz,idi,0,1) * (dy * dz)**2 &
-                         + outflx(ix,iy,iz,idi,1,1) * (dy * dz)**2 &
-                         + outflx(ix,iy,iz,idi,2,1) * (dx * dz)**2 &
-                         + outflx(ix,iy,iz,idi,3,1) * (dx * dz)**2 &
-                         + outflx(ix,iy,iz,idi,4,1) * (dx * dy)**2 &
-                         + outflx(ix,iy,iz,idi,5,1) * (dx * dy)**2 &
-                         + outflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,1) * (dy * dz)**2 &
-                         + outflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,1) * (dy * dz)**2 &
-                         + outflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,1) * (dx * dz)**2 &
-                         + outflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,1) * (dx * dz)**2 &
-                         + outflx(ix,iy,iz - 1,idi,5,1) * (dx * dy)**2 &
-                         + outflx(ix,iy,iz + 1,idi,4,1) * (dx * dy)**2 ) &
+                        (  outflx(ix,iy,iz,idi,0,ig,1) * (dy * dz)**2 &
+                         + outflx(ix,iy,iz,idi,1,ig,1) * (dy * dz)**2 &
+                         + outflx(ix,iy,iz,idi,2,ig,1) * (dx * dz)**2 &
+                         + outflx(ix,iy,iz,idi,3,ig,1) * (dx * dz)**2 &
+                         + outflx(ix,iy,iz,idi,4,ig,1) * (dx * dy)**2 &
+                         + outflx(ix,iy,iz,idi,5,ig,1) * (dx * dy)**2 &
+                         + outflx(mod(ix - 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,1,ig,1) * (dy * dz)**2 &
+                         + outflx(mod(ix + 1 + nx, nx)*transfer_mode+ix*(1 - transfer_mode),iy,iz,idi,0,ig,1) * (dy * dz)**2 &
+                         + outflx(ix,mod(iy - 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,3,ig,1) * (dx * dz)**2 &
+                         + outflx(ix,mod(iy + 1 + ny, ny)*transfer_mode+iy*(1 - transfer_mode),iz,idi,2,ig,1) * (dx * dz)**2 &
+                         + outflx(ix,iy,iz - 1,idi,5,ig,1) * (dx * dy)**2 &
+                         + outflx(ix,iy,iz + 1,idi,4,ig,1) * (dx * dy)**2 ) &
                          / ( (2.0_dp * dx * dy * dz)**2 )
             end do
-            outconv(ix,iy,iz,0) = conv0
-            outconv(ix,iy,iz,1) = conv1
+            outconv(ix,iy,iz,ig,0) = conv0
+            outconv(ix,iy,iz,ig,1) = conv1
+            end do
         end do ! iz
         end do ! iy
         end do ! ix
@@ -663,16 +736,22 @@ program test_fullmc
         do ix = 0, nx-1
         do iy = 0, ny-1
         do iz = 0, nz-1
-            ! recconv(ix,iy,iz,0) = (recconv(ix,iy,iz,0) / real(nphoton, dp) &
-            !     - real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz)
-            !     ! ) * kabs(ix,iy,iz)
-            ! recconv(ix,iy,iz,1) = (recconv(ix,iy,iz,1) / real(nphoton, dp)) &
-            !     * ((real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz))**2.0_dp
-            !     ! * kabs(ix,iy,iz)
-            conv0 = recconv(ix,iy,iz,0) * escale / nphotot
-            conv1 = (recconv(ix,iy,iz,1) * escale**2 / nphotot - conv0**2) / (nphotot - 1.0_dp)
-            outconv(ix,iy,iz,0) = (conv0 - real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz)
-            outconv(ix,iy,iz,1) = conv1 * kabs(ix,iy,iz)**2.0_dp
+        do ig = 1, ng
+            ! ! recconv(ix,iy,iz,0) = (recconv(ix,iy,iz,0) / real(nphoton, dp) &
+            ! !     - real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz)
+            ! !     ! ) * kabs(ix,iy,iz)
+            ! ! recconv(ix,iy,iz,1) = (recconv(ix,iy,iz,1) / real(nphoton, dp)) &
+            ! !     * ((real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz))**2.0_dp
+            ! !     ! * kabs(ix,iy,iz)
+            ! conv0 = recconv(ix,iy,iz,0) * escale / nphotot
+            ! conv1 = (recconv(ix,iy,iz,1) * escale**2 / nphotot - conv0**2) / (nphotot - 1.0_dp)
+            ! outconv(ix,iy,iz,0) = (conv0 - real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz)
+            ! outconv(ix,iy,iz,1) = conv1 * kabs(ix,iy,iz)**2.0_dp
+            conv0 = recconv(ix,iy,iz,ig,0) * escale / nphotot
+            conv1 = (recconv(ix,iy,iz,ig,1) * escale**2 / nphotot - conv0**2) / (nphotot - 1.0_dp)
+            outconv(ix,iy,iz,ig,0) = (conv0 - real(1 - swlw) * 1.0_dp * bplnk(ix,iy,iz)) * kabs(ix,iy,iz,ig)
+            outconv(ix,iy,iz,ig,1) = conv1 * kabs(ix,iy,iz,ig)**2.0_dp
+        end do
         end do ! iz
         end do ! iy
         end do ! ix
@@ -682,12 +761,18 @@ program test_fullmc
 
     do ix = 0, nx-1
     do iy = 0, ny-1
+    do ig = 1, ng
     ! recimg(ix,iy,0) = recimg(ix,iy,0) / real(nphoton, dp)
     ! recimg(ix,iy,1) = recimg(ix,iy,1) / real(nphoton, dp)
-    img0 = recimg(ix,iy,0) * escale / nphotot
-    img1 = (recimg(ix,iy,1) * escale**2 / nphotot - img0**2) / (nphotot - 1.0_dp)
-    outimg(ix,iy,0) = img0
-    outimg(ix,iy,1) = img1
+    ! img0 = recimg(ix,iy,0) * escale / nphotot
+    ! img1 = (recimg(ix,iy,1) * escale**2 / nphotot - img0**2) / (nphotot - 1.0_dp)
+    ! outimg(ix,iy,0) = img0
+    ! outimg(ix,iy,1) = img1
+    img0 = recimg(ix,iy,ig,0) * escale / nphotot
+    img1 = (recimg(ix,iy,ig,1) * escale**2 / nphotot - img0**2) / (nphotot - 1.0_dp)
+    outimg(ix,iy,ig,0) = img0
+    outimg(ix,iy,ig,1) = img1
+    end do
     end do ! iy
     end do ! ix
 
@@ -712,16 +797,22 @@ program test_fullmc
 
     write(*,*) "Preparing output arrays..."
 
-    allocate(outflx_tmp(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,0:1))
+    allocate(outflx_tmp(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,ng,0:1))
     
     do ix = 0, nx-1
     do iy = 0, ny-1
     do iz = 0, nz-1
         do idi = 0, swlw
-            outflx_tmp(ix,iy,iz,idi,0,0) = outflx(ix,iy,iz,idi,4,0)
-            outflx_tmp(ix,iy,iz,idi,0,1) = outflx(ix,iy,iz,idi,4,1)
-            outflx_tmp(ix,iy,iz,idi,1,0) = outflx(ix,iy,iz,idi,5,0)
-            outflx_tmp(ix,iy,iz,idi,1,1) = outflx(ix,iy,iz,idi,5,1)
+            ! outflx_tmp(ix,iy,iz,idi,0,0) = outflx(ix,iy,iz,idi,4,0)
+            ! outflx_tmp(ix,iy,iz,idi,0,1) = outflx(ix,iy,iz,idi,4,1)
+            ! outflx_tmp(ix,iy,iz,idi,1,0) = outflx(ix,iy,iz,idi,5,0)
+            ! outflx_tmp(ix,iy,iz,idi,1,1) = outflx(ix,iy,iz,idi,5,1)
+            do ig = 1, ng
+            outflx_tmp(ix,iy,iz,idi,0,ig,0) = outflx(ix,iy,iz,idi,4,ig,0)
+            outflx_tmp(ix,iy,iz,idi,0,ig,1) = outflx(ix,iy,iz,idi,4,ig,1)
+            outflx_tmp(ix,iy,iz,idi,1,ig,0) = outflx(ix,iy,iz,idi,5,ig,0)
+            outflx_tmp(ix,iy,iz,idi,1,ig,1) = outflx(ix,iy,iz,idi,5,ig,1)
+            end do
         end do
     end do
     end do
@@ -731,16 +822,21 @@ program test_fullmc
 
     write(*,*) "Writing output files to ", trim(line)
 
-    ! call write_output_d6(outflx(0:nx-1,0:ny-1,0:nz-1,0:swlw,4:5,0:1), nx, ny, nz, swlw+1, 2, nphoton, trim(line)//"/outflx.txt")
-    call write_output_d6(outflx_tmp(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,0:1), nx, ny, nz, swlw+1, 2, nphoton, trim(line)//"/outradirr.txt")
-    ! call write_output_d6(outflx(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,0:1), nx, ny, nz, swlw+1, 2, nphoton, trim(line)//"/outflx.txt")
-    call write_output_d4(outconv(0:nx-1,0:ny-1,0:nz-1,0:1), nx, ny, nz, nphoton, trim(line)//"/outradconv.txt")
-    call write_output_d3(outimg(0:nx-1,0:ny-1,0:1), nx, ny, nphoton, trim(line)//"/outradimg.txt")
+    ! ! call write_output_d6(outflx(0:nx-1,0:ny-1,0:nz-1,0:swlw,4:5,0:1), nx, ny, nz, swlw+1, 2, nphoton, trim(line)//"/outflx.txt")
+    ! call write_output_d6(outflx_tmp(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,0:1), nx, ny, nz, swlw+1, 2, nphoton, trim(line)//"/outradirr.txt")
+    ! ! call write_output_d6(outflx(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,0:1), nx, ny, nz, swlw+1, 2, nphoton, trim(line)//"/outflx.txt")
+    ! call write_output_d4(outconv(0:nx-1,0:ny-1,0:nz-1,0:1), nx, ny, nz, nphoton, trim(line)//"/outradconv.txt")
+    ! call write_output_d3(outimg(0:nx-1,0:ny-1,0:1), nx, ny, nphoton, trim(line)//"/outradimg.txt")
+    call write_output_d6(outflx_tmp(0:nx-1,0:ny-1,0:nz-1,0:swlw,0:1,:,0:1), nx, ny, nz, swlw+1, 2, ng, nphoton, trim(line)//"/outradirr.txt")
+    call write_output_d4(outconv(0:nx-1,0:ny-1,0:nz-1,:,0:1), nx, ny, nz, ng, nphoton, trim(line)//"/outradconv.txt")
+    call write_output_d3(outimg(0:nx-1,0:ny-1,:,0:1), nx, ny, ng, nphoton, trim(line)//"/outradimg.txt")
 
     deallocate(outflx_tmp)
     deallocate(outconv)
     deallocate(outimg)
 
+    call cpu_time(time_1)
+    write(*,*) "Output files written (", time_1 - time_0, "s)."
     write(*,*) "Done."
     
 ! contains
