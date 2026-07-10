@@ -11,8 +11,8 @@ from fullmc import *
 if __name__ == '__main__':
     work_dir = os.path.join('out', os.path.splitext(os.path.basename(__file__))[0])
 
-    run = True
-    # run = False
+    # run = True
+    run = False
 
     debug = 0
     # debug = 1
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     taua_z_all = taua_z_wv[:, index_sort]
     taur_z_all = tau_rayleigh_z_wv[:, index_sort]
 
-    index_sparse = np.arange(0, len(taua_values_all), 1000)
+    index_sparse = np.arange(0, len(taua_values_all), 10)
 
     wvls = wvl_all[index_sparse]
     taua_values = taua_values_all[index_sparse]
@@ -200,14 +200,18 @@ if __name__ == '__main__':
             radimg2_arr = data['radimg2_arr']
             fmc = data['fmc']
     taua_slant_values = taua_values * (1.0 / solmu + 1.0 / viewmu)
-    lntrans1_arr = np.log(np.pi*radimg1_arr)
-    lntrans2_arr = np.log(np.pi*radimg2_arr)
+    lntrans1_arr = np.log(np.pi*radimg1_arr/solmu)
+    lntrans2_arr = np.log(np.pi*radimg2_arr/solmu)
+    coeff1_arr = np.full((nx, 3), np.nan, dtype=np.float64)
+    coeff2_arr = np.full((nx, 3), np.nan, dtype=np.float64)
     for ix in range(nx):
         x1, y1 = taua_slant_values, lntrans1_arr[:, ix, 0, 0]
         x2, y2 = taua_slant_values, lntrans2_arr[:, ix, 0, 0]
         try:
             coeff1 = np.polyfit(x1[x1 < 5.0], y1[x1 < 5.0], 2)
             coeff2 = np.polyfit(x2[x2 < 5.0], y2[x2 < 5.0], 2)
+            coeff1_arr[ix, :] = coeff1
+            coeff2_arr[ix, :] = coeff2
         except:
             continue
         x_arr = np.linspace(0.0, 5.0, 100)
@@ -215,13 +219,13 @@ if __name__ == '__main__':
         y_arr2 = np.polyval(coeff2, x_arr)
         fig = plt.figure(figsize=(5, 7))
         ax = fig.add_subplot(2, 1, 1)
-        ax.set_ylabel('Slant absorption optical depth')
-        ax.set_ylabel('ln(transmittance)')
+        ax.set_xlabel('Slant absorption optical depth')
+        ax.set_ylabel('ln(reflectance)')
         ax.scatter(taua_slant_values, lntrans1_arr[:, ix, 0, 0], s=4, marker='o', label='3D', color='tab:blue')
         ax.scatter(taua_slant_values, lntrans2_arr[:, ix, 0, 0], s=4, marker='s', label='ICA', color='tab:orange')
         ax.plot(x_arr, y_arr1, '--', color='tab:blue', label='3D fit (%.1e x^2 + %.1e x + %.1e)' % (coeff1[0], coeff1[1], coeff1[2]))
         ax.plot(x_arr, y_arr2, '--', color='tab:orange', label='ICA fit (%.1e x^2 + %.1e x + %.1e)' % (coeff2[0], coeff2[1], coeff2[2]))
-        ax.set_title('Radiance vs Absorption Optical Depth at X={:.1f} km'.format(ix*dx*1e-3))
+        ax.set_title('Reflectance vs Absorption Optical Depth at X={:.1f} km'.format(ix*dx*1e-3))
         ax.legend()
         ax.set_xlim(0.0, 5.0)
         ax.set_ylim(min(np.min(y_arr1[x_arr < 5.0]), np.min(y_arr2[x_arr < 5.0])), 0.0)
@@ -233,14 +237,45 @@ if __name__ == '__main__':
         # ax2.plot(taua_slant_values, ratio, 'o-', label='Ratio (3D/ICA)', color='tab:green', markersize=4)
         # ax2.set_xlim(taua_slant_values[0] * 0.9, taua_slant_values[-1] * 1.1)
         ax2.set_xlabel('Wavelength (nm)')
-        ax2.set_ylabel('Radiance (W/m^2/nm/sr)')
-        ax2.scatter(wvls, radimg1_arr[:, ix, 0, 0], label='3D', color='tab:blue', s=4)
-        ax2.scatter(wvls, radimg2_arr[:, ix, 0, 0], label='ICA', color='tab:orange', s=4)
+        ax2.set_ylabel('Reflectance')
+        ax2.scatter(wvls, np.pi*radimg1_arr[:, ix, 0, 0]/solmu, label='3D', color='tab:blue', s=4)
+        ax2.scatter(wvls, np.pi*radimg2_arr[:, ix, 0, 0]/solmu, label='ICA', color='tab:orange', s=4)
         ax2.set_xlim(wvl[0], wvl[-1])
         ax2.legend()
         fig.tight_layout()
         fig.savefig(f'{work_dir}/01_radtoa_radiance_vs_absorption_x{ix:02d}.png'.format(ix), dpi=300, bbox_inches='tight')
         plt.close(fig)
+    
+    fig = plt.figure(figsize=(5, 9.6))
+    ax1 = fig.add_subplot(3, 1, 1)
+    ax2 = fig.add_subplot(3, 1, 2)
+    ax3 = fig.add_subplot(3, 1, 3)
+    # ax1.set_xlabel('X (km)')
+    ax1.set_xticklabels([])
+    ax1.set_ylabel('$C_2$')
+    ax1.plot(np.arange(nx) * dx * 1e-3, coeff1_arr[:, 0], 'o-', label='3D', color='tab:blue', markersize=4)
+    ax1.plot(np.arange(nx) * dx * 1e-3, coeff2_arr[:, 0], 's--', label='ICA', color='tab:orange', markersize=4)
+    ax1.set_title('(a) Quadratic coefficient', fontsize=10)
+    ax1.set_xlim(np.arange(nx)[0] * dx * 1e-3, np.arange(nx)[-1] * dx * 1e-3)
+    ax1.legend()
+    # ax2.set_xlabel('X (km)')
+    ax2.set_xticklabels([])
+    ax2.set_ylabel('$C_1$')
+    ax2.plot(np.arange(nx) * dx * 1e-3, coeff1_arr[:, 1], 'o-', label='3D', color='tab:blue', markersize=4)
+    ax2.plot(np.arange(nx) * dx * 1e-3, coeff2_arr[:, 1], 's--', label='ICA', color='tab:orange', markersize=4)
+    ax2.set_title('(b) Linear coefficient', fontsize=10)
+    ax2.set_xlim(np.arange(nx)[0] * dx * 1e-3, np.arange(nx)[-1] * dx * 1e-3)
+    # ax2.legend()
+    ax3.set_xlabel('X (km)')
+    ax3.set_ylabel('$C_0$')
+    ax3.plot(np.arange(nx) * dx * 1e-3, coeff1_arr[:, 2], 'o-', label='3D', color='tab:blue', markersize=4)
+    ax3.plot(np.arange(nx) * dx * 1e-3, coeff2_arr[:, 2], 's--', label='ICA', color='tab:orange', markersize=4)
+    ax3.set_title('(c) Constant coefficient', fontsize=10)
+    ax3.set_xlim(np.arange(nx)[0] * dx * 1e-3, np.arange(nx)[-1] * dx * 1e-3)
+    # ax3.legend()
+    fig.tight_layout()
+    fig.savefig(f'{work_dir}/01_radtoa_fitting_coefficients.png', dpi=300, bbox_inches='tight')
+    plt.close(fig)
     
     for iabs in range(len(taua_values)):
         plot_data = np.pi*radimg1_arr[iabs, :, 0, 0]
@@ -258,7 +293,7 @@ if __name__ == '__main__':
         plt.close(fig)
 
     plot_data1 = (fmc.kext[:, 0, :] - fmc.kabs[:, 0, :])
-    xx, zz = np.meshgrid(np.linspace(0.0, nx * 100.0, nx), np.linspace(0.0, nz * 80.0, nz))
+    xx, zz = np.meshgrid(np.linspace(0.0, nx * dx * 1e-3, nx), np.linspace(0.0, nz * dz * 1e-3, nz))
 
     fig = plt.figure(figsize=(5, 3.2))
     ax = fig.add_subplot(1, 2, 1)
