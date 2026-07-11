@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # ny = 28
     # nz = 28
     nx = 28
-    ny = 1
+    ny = 28
     nz = 28
     dx = 100.0
     dy = 100.0
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     swlw = 1 # SW
     # nphoton = 1
     # nphoton = 2e1
-    # nphoton = 1e2
-    nphoton = 1e3
+    nphoton = 1e2
+    # nphoton = 1e3
     # nphoton = 5e3
     # nphoton = 2e4
     # nphoton = 5e4
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     fmc.bplnk[:, :, :] = 0.0
     fmc.bgrnd[:, :] = 0.0
     fmc.galb[:, :] = 0.0
-    fmc.read_atmtxt('dat/mod/les_mod_01.txt')
+    fmc.read_atmtxt('dat/mod/les_mod_02.txt')
     fmc.derivative = 0
 
     fmc1 = copy.deepcopy(fmc)
@@ -252,18 +252,18 @@ if __name__ == '__main__':
                 cloud_segs.append([(x0, z1), (x1, z1)])
 
     data_max = max(
-        np.max(radtracer_i1[:, :, :, 0, :, 0]), 
-        np.max(radtracer_i2[:, :, :, 0, :, 0]),
-        np.max(radtracer_i3[:, :, :, 0, :, 0])
+        np.max(radtracer_i1[:, :, :, :, :, 0]), 
+        np.max(radtracer_i2[:, :, :, :, :, 0]),
+        np.max(radtracer_i3[:, :, :, :, :, 0])
     )
     for ix in range(nx):
         for iy in range(ny):
             # data_plot = radtracer_i1[ix, iy, :, 0, :, 0] / radimg_i1[ix, iy, 0, np.newaxis, np.newaxis] * fmc_i.ksca[:, 0, :]
             # data_plot2 = radtracer_i2[ix, iy, :, 0, :, 0] / radimg_i2[ix, iy, 0, np.newaxis, np.newaxis] * fmc_i.ksca[:, 0, :]
             # data_plot3 = radtracer_i3[ix, iy, :, 0, :, 0] / radimg_i3[ix, iy, 0, np.newaxis, np.newaxis] * fmc_i.ksca[:, 0, :]
-            data_plot = radtracer_i1[ix, iy, :, 0, :, 0]
-            data_plot2 = radtracer_i2[ix, iy, :, 0, :, 0]
-            data_plot3 = radtracer_i3[ix, iy, :, 0, :, 0]
+            data_plot = radtracer_i1[ix, iy, :, iy, :, 0]
+            data_plot2 = radtracer_i2[ix, iy, :, iy, :, 0]
+            data_plot3 = radtracer_i3[ix, iy, :, iy, :, 0]
             xx, zz = np.meshgrid(np.linspace(0.0, nx * 100.0, nx), np.linspace(0.0, nz * 80.0, nz))
 
             fig = plt.figure(figsize=(9, 3.2))
@@ -303,9 +303,9 @@ if __name__ == '__main__':
     
     for ix in range(nx):
         for iy in range(ny):
-            data_plot = update[ix, iy, 0, :, 0, :]
-            data_plot2 = update[ix, iy, 1, :, 0, :]
-            data_plot3 = update[ix, iy, 2, :, 0, :]
+            data_plot = update[ix, iy, 0, :, iy, :]
+            data_plot2 = update[ix, iy, 1, :, iy, :]
+            data_plot3 = update[ix, iy, 2, :, iy, :]
             xx, zz = np.meshgrid(np.linspace(0.0, nx * 100.0, nx), np.linspace(0.0, nz * 80.0, nz))
 
             fig = plt.figure(figsize=(9, 3.2))
