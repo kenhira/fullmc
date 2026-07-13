@@ -385,7 +385,7 @@ program test_fullmc
             rloc = rloc + rdir * rdist
             ! weight_absorbed = weight * (1.0_dp - exp(-kabs_grid * rdist))
             ! new_weight = weight - weight_absorbed
-            call weight_calc(weight, 1, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+            call weight_calc(weight, 1, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             if (derivative_mode == 1) then
                 phtrace1_diff = 1. - rdist * ksca_grid
                 phtrace1(rind(0), rind(1), rind(2)) = phtrace1(rind(0), rind(1), rind(2)) + phtrace1_diff
@@ -435,7 +435,7 @@ program test_fullmc
             ptau = ptau - kcol_grid * rdist
             ! weight_absorbed = weight * (1.0_dp - exp(-kabs_grid * rdist))
             ! new_weight = weight - weight_absorbed
-            call weight_calc(weight, 0, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+            call weight_calc(weight, 0, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             if (derivative_mode == 1) then
                 phtrace1_diff = 1. - rdist * ksca_grid
                 phtrace1(rind(0), rind(1), rind(2)) = phtrace1(rind(0), rind(1), rind(2)) + phtrace1_diff

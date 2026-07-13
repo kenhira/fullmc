@@ -50,12 +50,13 @@ module fullmc_funcs
             real(dp), intent(out) :: kcol_grid
         end subroutine col_calc_iface
 
-        subroutine wgt_calc_iface(weight_old, collision, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+        subroutine wgt_calc_iface(weight_old, collision, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
             real(dp), intent(in) :: weight_old(:)
             integer, intent(in) :: collision
             real(dp), intent(in) :: kabs_grid(:), rdist, komg_grid(:)
+            integer, intent(in) :: ng
             real(dp), intent(out) :: weight_absorbed(:), new_weight(:)
         end subroutine wgt_calc_iface
     end interface
@@ -304,23 +305,28 @@ module fullmc_funcs
         kcol_grid = ksca_grid + kabs_grid
     end subroutine collision_calc2
 
-    subroutine weight_calc1(weight_old, collision, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+    subroutine weight_calc1(weight_old, collision, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
             real(dp), intent(in) :: weight_old(:)
             integer, intent(in) :: collision
             real(dp), intent(in) :: kabs_grid(:), rdist, komg_grid(:)
+            integer, intent(in) :: ng
             real(dp), intent(out) :: weight_absorbed(:), new_weight(:)
-            weight_absorbed = weight_old * (1.0_dp - exp(-kabs_grid * rdist))
+            real(dp) :: tauw(ng)
+            tauw(:) = kabs_grid(:) * rdist
+            weight_absorbed = weight_old * (1.0_dp - exp(-tauw))
+            ! weight_absorbed = weight_old * tauw * (1.0_dp - (tauw * (0.5_dp - tauw * (tauw / 6.0_dp))))
             new_weight = weight_old - weight_absorbed
     end subroutine weight_calc1
 
-    subroutine weight_calc2(weight_old, collision, kabs_grid, rdist, komg_grid, weight_absorbed, new_weight)
+    subroutine weight_calc2(weight_old, collision, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             implicit none
             integer, parameter :: dp = selected_real_kind(15, 307)
             real(dp), intent(in) :: weight_old(:)
             integer, intent(in) :: collision
             real(dp), intent(in) :: kabs_grid(:), rdist, komg_grid(:)
+            integer, intent(in) :: ng
             real(dp), intent(out) :: weight_absorbed(:), new_weight(:)
             weight_absorbed = real(collision, dp) * weight_old * (1.0_dp - komg_grid)
             new_weight = weight_old - weight_absorbed
