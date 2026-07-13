@@ -46,8 +46,8 @@ if __name__ == '__main__':
     # source = 4 # TOA detector
     swlw = 1 # SW
     # nphoton = 2e1
-    # nphoton = 3e2
-    nphoton = 5e3
+    nphoton = 3e2
+    # nphoton = 5e3
     # nphoton = 2e4
 
     # solmu = 1.0
@@ -72,6 +72,7 @@ if __name__ == '__main__':
             viewmu=viewmu, viewphi=viewphi,
             nphoton=nphoton,
             debug=debug,
+            homogenize=False,
             Ncpu=Ncpu,
             wrkdir=work_dir,
         )

@@ -25,8 +25,8 @@ if __name__ == '__main__':
     dy = 100.0
     dz = 80.0
 
-    derivative = 0 # no derivative
-    # derivative = 1 # calculate derivative w.r.t. ksca
+    # derivative = 0 # no derivative
+    derivative = 1 # calculate derivative w.r.t. ksca
 
     # transfermode = 0 # ICA
     transfermode = 1 # 3D
@@ -179,7 +179,7 @@ if __name__ == '__main__':
 
     fig.savefig(f'{work_dir}/01_radtoa_toa_detector.png', dpi=300, bbox_inches='tight')
 
-    mask = fmc.kext[:, 0, :] > 1e-4
+    mask = fmc.ksca[:, 0, :] > 1e-4
     x_edges = np.linspace(0.0, nx * dx * 1e-3, nx + 1)
     z_edges = np.linspace(0.0, nz * dz * 1e-3, nz + 1)
 
@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
             plt.close(fig)
     
-    plot_data = fmc.kext[:, 0, :] * dz
+    plot_data = (fmc.ksca[:, 0, :] + fmc.kabs[:, 0, :, 0]) * dz
 
     fig = plt.figure(figsize=(5, 3.2))
     ax = fig.add_subplot(1, 1, 1)

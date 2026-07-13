@@ -48,15 +48,15 @@ if __name__ == '__main__':
 
     # solmu = 1.0
     # solmu = np.sqrt(2.0) / 2.0
-    solmu = np.cos(np.radians(25.0))
-    # solmu = np.cos(np.radians(30.0))
+    # solmu = np.cos(np.radians(25.0))
+    solmu = np.cos(np.radians(45.0))
     # solmu = 0.5
     solphi = 0.5 * np.pi
 
-    viewmu = 1.0
-    viewphi = 0.0
-    # viewmu = np.cos(np.radians(15.0))
-    # viewphi = np.radians(-90.0)
+    # viewmu = 1.0
+    # viewphi = 0.0
+    viewmu = np.cos(np.radians(45.0))
+    viewphi = np.radians(-90.0)
 
     # Ncpu = None
     Ncpu = 8
@@ -65,7 +65,8 @@ if __name__ == '__main__':
     # taua_values = np.logspace(-3, 0, 4)
     # taua_values = np.logspace(-3.2, 0.2, 18)
     # taua_values = np.linspace(0.01, 2, 4)
-    taua_values = np.linspace(0.01, 2, 200)
+    taua_values = np.linspace(0.01, 2, 10)
+    # taua_values = np.linspace(0.01, 2, 200)
     radimg1_arr = np.full((len(taua_values), nx, ny, 2), np.nan, dtype=np.float64)
     radimg2_arr = np.full((len(taua_values), nx, ny, 2), np.nan, dtype=np.float64)
 
@@ -128,6 +129,7 @@ if __name__ == '__main__':
             viewmu=viewmu, viewphi=viewphi,
             nphoton=nphoton,
             debug=debug,
+            homogenize=False,
             Ncpu=Ncpu,
             wrkdir=work_dir,
         )

@@ -7,16 +7,17 @@ module fullmc_funcs
         subroutine rec_scat_iface(weight_absorbed, new_weight, ia, scaord, swlw, &
             nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
-            ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
+            en3d, ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
             integer, parameter :: dp = selected_real_kind(15, 307)
             integer, intent(in) :: ia, scaord, swlw
             integer, intent(in) :: nx, ny, nz, ng
             integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
             integer, intent(in) :: transfer_mode
+            integer, intent(in) :: en3d(-1:nz)
             integer, intent(in) :: rind(0:2), rindsrc(0:2)
             real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
             real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-            real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+            real(dp), intent(in) :: dxs(0:nz-1,0:2)
             integer, intent(in) :: itlpbmax
             real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
             real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -66,16 +67,17 @@ module fullmc_funcs
     subroutine recorder_scat1(weight_absorbed, new_weight, ia, scaord, swlw, &
             nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
-            ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
+            en3d, ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
         integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
+        integer, intent(in) :: en3d(-1:nz)
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -96,16 +98,17 @@ module fullmc_funcs
     subroutine recorder_scat2(weight_absorbed, new_weight, ia, scaord, swlw, &
             nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
-            ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
+            en3d, ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
         integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
+        integer, intent(in) :: en3d(-1:nz)
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -127,16 +130,17 @@ module fullmc_funcs
     subroutine recorder_scat3(weight_absorbed, new_weight, ia, scaord, swlw, &
             nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
-            ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
+            en3d, ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
         integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
+        integer, intent(in) :: en3d(-1:nz)
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -157,16 +161,17 @@ module fullmc_funcs
     subroutine recorder_scat4(weight_absorbed, new_weight, ia, scaord, swlw, &
             nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
             rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
-            ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
+            en3d, ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         integer, intent(in) :: ia, scaord, swlw
         integer, intent(in) :: nx, ny, nz, ng
         integer, intent(in) :: ix, iy, iz, iphoton, it, debug, iutraj
         integer, intent(in) :: transfer_mode
+        integer, intent(in) :: en3d(-1:nz)
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -184,7 +189,7 @@ module fullmc_funcs
                 phimg, rindsrc, nx, ny, ng)
         else if (swlw == 1) then
             call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, &
-                ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
+                en3d, ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
             mu = -sum(dirsol(0:2) * rdir(0:2))
             g_grid = gparam(rind(0), rind(1), rind(2))
             call sample_d3(vqllpb(:) * new_weight(:) * (1.0_dp - g_grid**2) &
@@ -206,7 +211,7 @@ module fullmc_funcs
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -540,7 +545,7 @@ module fullmc_funcs
         rdir_sign(0:2) = max(0, min(1, ceiling(rdir(0:2))))
     end subroutine photon_initdir
 
-    subroutine photon_intersect(nx, ny, nz, r5ind, r5loc, r5dir, r5dir_sign, xarr, yarr, zarr, rdist, rdloc, icase, isign)
+    subroutine photon_intersect(nx, ny, nz, r5ind, r5loc, r5dir, r5dir_sign, xarr, yarr, zarr, en3d, rdist, rdloc, icase, isign)
         implicit none
         integer, intent(in) :: nx, ny, nz
         integer, intent(in) :: r5ind(0:2)
@@ -548,16 +553,18 @@ module fullmc_funcs
         real(dp), intent(in) :: r5dir(0:2)
         integer, intent(in) :: r5dir_sign(0:2)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
+        integer, intent(in) :: en3d(-1:nz)
         real(dp), intent(out) :: rdist
         real(dp), intent(out) :: rdloc(0:2)
         integer, intent(out) :: icase, isign 
         real(dp) :: xbnd(0:1), ybnd(0:1), zbnd(0:1)
         real(dp) :: dc(0:2)
 
-        xbnd(0) = xarr(r5ind(0))
-        xbnd(1) = xarr(r5ind(0)+1)
-        ybnd(0) = yarr(r5ind(1))
-        ybnd(1) = yarr(r5ind(1)+1)
+        ! TODO: only for 3D transport
+        xbnd(0) = xarr(r5ind(0)) * real(en3d(r5ind(2)), dp) + xarr(0) * real(1 - en3d(r5ind(2)), dp)
+        xbnd(1) = xarr(r5ind(0)+1) * real(en3d(r5ind(2)), dp) + xarr(nx) * real(1 - en3d(r5ind(2)), dp)
+        ybnd(0) = yarr(r5ind(1)) * real(en3d(r5ind(2)), dp) + yarr(0) * real(1 - en3d(r5ind(2)), dp)
+        ybnd(1) = yarr(r5ind(1)+1) * real(en3d(r5ind(2)), dp) + yarr(ny) * real(1 - en3d(r5ind(2)), dp)
         zbnd(0) = zarr(r5ind(2))
         zbnd(1) = zarr(r5ind(2)+1)
 
@@ -636,29 +643,42 @@ module fullmc_funcs
         scaord = scaord + 1
     end subroutine photon_reflection
 
-    subroutine photon_movegrid(r5ind, r5loc, r5dir, r5dist, icase, isign, nx, ny, nz, dxs, transfer_mode)
+    subroutine photon_movegrid(r5ind, r5loc, r5dir, r5dist, icase, isign, nx, ny, nz, dxs, transfer_mode, en3d)
         implicit none
         integer, intent(inout) :: r5ind(0:2)
         real(dp), intent(inout) :: r5loc(0:2)
         real(dp), intent(in) :: r5dir(0:2)
         real(dp), intent(in) :: r5dist
         integer, intent(in) :: icase, isign, nx, ny, nz
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
-        integer, intent(in) :: transfer_mode
-        real(dp) :: dxslocal(0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
+        integer, intent(in) :: transfer_mode, en3d(-1:nz)
         integer :: r5ind2(0:2)
+        integer :: nxs(0:2)
         r5loc(0:2) = r5loc(0:2) + r5dir(0:2) * r5dist
-        dxslocal(0:2) = dxs(r5ind(0), r5ind(1), r5ind(2), 0:2)
         r5ind2(0:2) = r5ind(0:2)
         r5ind2(icase) = r5ind(icase) + 2 * isign - 1
+        ! Homogenized layer treatment
+        if (en3d(r5ind(2)) == 0) then ! photon coming from homogenized layer
+            if (icase == 0) then ! reaching the edge of the homogenized layer
+                r5ind2(0) = nx * isign + (-1) * (1 - isign)
+            else if (icase == 1) then
+                r5ind2(1) = ny * isign + (-1) * (1 - isign)
+            else if (en3d(r5ind2(2)) == 1) then ! photon going to non-homogenized layer
+                r5ind2(0) = modulo(int(r5loc(0) / dxs(r5ind(2), 0)) + nx, nx)
+                r5ind2(1) = modulo(int(r5loc(1) / dxs(r5ind(2), 1)) + ny, ny)
+            end if
+        end if
         ! wrap x,y
+        nxs(0) = nx
+        nxs(1) = ny
+        nxs(2) = 1
         r5ind(0) = modulo(r5ind2(0) + nx, nx) * transfer_mode + (1 - transfer_mode) * r5ind(0)
         r5ind(1) = modulo(r5ind2(1) + ny, ny) * transfer_mode + (1 - transfer_mode) * r5ind(1)
         r5ind(2) = r5ind2(2)
         ! rloc(0) = modulo(rloc(0) + maxx, maxx) * real(isign) + (maxx - modulo(maxx - rloc(0), maxx)) * real(1 - isign)
         ! rloc(1) = modulo(rloc(1) + maxy, maxy) * real(isign) + (maxy - modulo(maxy - rloc(1), maxy)) * real(1 - isign)
         r5loc(icase) = merge( &
-            real(r5ind(icase), dp) * dxslocal(icase) * real(isign, dp) + real(r5ind(icase) + 1, dp) * dxslocal(icase) * real(1 - isign, dp), &
+            real(r5ind(icase), dp) * dxs(max(min(r5ind(2), nxs(icase)-1), 0), icase) * real(isign, dp) + real(r5ind(icase) + 1, dp) * dxs(max(min(r5ind(2), nxs(icase)-1), 0), icase) * real(1 - isign, dp), &
             r5loc(icase), &
             icase <= 1 )
     end subroutine photon_movegrid
@@ -697,7 +717,7 @@ module fullmc_funcs
     end subroutine photon_rroulette
 
     subroutine photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, &
-        ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
+        en3d, ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
         implicit none
         real(dp), intent(in) :: rloc(0:2)
         integer, intent(in) :: rind(0:2)
@@ -706,8 +726,9 @@ module fullmc_funcs
         integer, intent(in) :: nx, ny, nz, ng
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
+        real(dp), intent(in) :: dxs(0:nz-1,0:2)
         integer, intent(in) :: transfer_mode
+        integer, intent(in) :: en3d(-1:nz)
         integer, intent(in) :: ix, iy, iz, ia, iphoton, it
         integer, intent(in) :: debug
         integer, intent(in) :: iutraj
@@ -754,7 +775,7 @@ module fullmc_funcs
             ! rdloc(0:2) = dc(icase) * rlpbdir(0:2) / rlpbdir(icase)
             ! rdist = sqrt(sum(rdloc**2))
 
-            call photon_intersect(nx, ny, nz, rlpbind, rlpbloc, rlpbdir, rlpbdir_sign, xarr, yarr, zarr, rdist, rdloc, icase, isign)
+            call photon_intersect(nx, ny, nz, rlpbind, rlpbloc, rlpbdir, rlpbdir_sign, xarr, yarr, zarr, en3d, rdist, rdloc, icase, isign)
             ! (r5ind, r5loc, r5dir, r5dir_sign, xarr, yarr, zarr, rdist, rdloc, icase, isign)
 
 
@@ -777,7 +798,7 @@ module fullmc_funcs
             !     real(rlpbind(icase), dp) * dxs(icase) * real(isign, dp) + real(rlpbind(icase) + 1, dp) * dxs(icase) * real(1 - isign, dp), &
             !     rlpbloc(icase), &
             !     icase <= 1 )
-            call photon_movegrid(rlpbind, rlpbloc, rlpbdir, rdist, icase, isign, nx, ny, nz, dxs, transfer_mode)
+            call photon_movegrid(rlpbind, rlpbloc, rlpbdir, rdist, icase, isign, nx, ny, nz, dxs, transfer_mode, en3d)
 
             itlpb = itlpb + 1
             if (rlpbind(2) >= nz) exit
@@ -926,7 +947,7 @@ module fullmc_funcs
         open(unit, file = filename, status = "replace", action = "write", form = "formatted")
 
         write(unit, '(A)') "! nx ny nz nd na ng comp nphoton"
-        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, nd, na, ng, 2, nphoton
+        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, nd, na, ng, 2, nphoton
         do ix = 0, nx-1
             do iy = 0, ny-1
                 do iz = 0, nz-1
@@ -967,7 +988,7 @@ module fullmc_funcs
         ! write(unit, '(A)') "! nx ny nz ncase comp nphoton"
         ! write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, 3, 2, nphoton
         write(unit, '(A)') "! nx ny nz ng comp nphoton"
-        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, ng, 2, nphoton
+        write(unit, '(I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,I10)') nx, ny, nz, ng, 2, nphoton
         do ix = 0, nx-1
             do iy = 0, ny-1
                 do iz = 0, nz-1

@@ -38,9 +38,9 @@ if __name__ == "__main__":
     source = 2 # Volumetric within the atmosphere
     swlw = 0 # LW
     # nphoton = 50
-    # nphoton = 500
+    nphoton = 500
     # nphoton = 5000
-    nphoton = 40000
+    # nphoton = 40000
     # nphoton = 100000
 
     # source = 0 # TOA Direct
@@ -65,8 +65,8 @@ if __name__ == "__main__":
     Ncpu = 8
     # Ncpu = 128
 
-    # wgttype = 1 # 1: path length, 2: at collision
-    wgttype = 2
+    wgttype = 1 # 1: path length, 2: at collision
+    # wgttype = 2
 
     fmc = FullMC(
         nx=nx, ny=ny, nz=nz,
@@ -77,6 +77,7 @@ if __name__ == "__main__":
         solmu=solmu, solphi=solphi,
         viewmu=viewmu, viewphi=viewphi,
         nphoton=nphoton,
+        homogenize=True,
         Ncpu=Ncpu,
         wgttype=wgttype,
         wrkdir=work_dir,

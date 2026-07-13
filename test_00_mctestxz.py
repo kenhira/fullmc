@@ -80,8 +80,8 @@ if __name__ == '__main__':
     dy = 100.0
     dz = 80.0
 
-    transfermode = 0 # ICA
-    # transfermode = 1 # 3D
+    # transfermode = 0 # ICA
+    transfermode = 1 # 3D
 
     # swlw = 0 # LW
     # swlw = 1 # SW
@@ -119,6 +119,7 @@ if __name__ == '__main__':
             viewmu=viewmu, viewphi=viewphi,
             nphoton=nphoton,
             debug=debug,
+            homogenize=False, #True,
             Ncpu=Ncpu,
             wrkdir=work_dir,
         )
@@ -214,9 +215,11 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(5,4))
     ax = fig.add_axes([0.11, 0.18, 0.65, 0.7])
     ax.set_aspect('equal')
-    kx1 = ax.pcolormesh(xx, zz, fmc.kext[:,0,:], norm=mcolors.LogNorm(vmin=fmc.kext[fmc.kext>0].min(), vmax=fmc.kext.max()), cmap='Blues_r')
+    data_ext = fmc.kabs[:,0,:,0]+fmc.ksca[:,0,:]
+    kx1 = ax.pcolormesh(xx, zz, data_ext, norm=mcolors.LogNorm(vmin=data_ext[data_ext>0].min(), vmax=data_ext.max()), cmap='Blues_r')
     # draw greyscale background and overlay hatch patterns by value
-    data = 1. - fmc.kabs[:,0,:]/fmc.kext[:,0,:]
+    # data = 1. - fmc.kabs[:,0,:]/fmc.kext[:,0,:]
+    data = fmc.ksca[:,0,:]/(fmc.ksca[:,0,:] + fmc.kabs[:,0,:,0])
 
     n_hatches = 5
     bins = np.linspace(np.nanmin(data), np.nanmax(data), n_hatches+1)
@@ -280,23 +283,24 @@ if __name__ == '__main__':
         header = fh.readline()  # skip header
         dims_line = fh.readline()
         # nx, ny, nz, ncase, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
-        nx, ny, nz, nd, na, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
+        nx, ny, nz, nd, na, ng, ncomp, nphoton = [int(x) for x in dims_line.strip().split()]
         
-        radirr = np.zeros((nx, ny, nz, nd, na, ncomp), dtype=np.float64)
+        radirr = np.zeros((nx, ny, nz, nd, na, ng, ncomp), dtype=np.float64)
         
         for ix in range(nx):
             for iy in range(ny):
                 for iz in range(nz):
                     for idi in range(nd):
                         for ia in range(na):
-                            line = fh.readline()
-                            parts = line.strip().split()
-                            radirr[ix, iy, iz, idi, ia, 0] = float(parts[0])
-                            radirr[ix, iy, iz, idi, ia, 1] = float(parts[1])
+                            for ig in range(ng):
+                                line = fh.readline()
+                                parts = line.strip().split()
+                                radirr[ix, iy, iz, idi, ia, ig, 0] = float(parts[0])
+                                radirr[ix, iy, iz, idi, ia, ig, 1] = float(parts[1])
 
     indy = 0
-    data_plot = radirr[:, indy, :, 0, 0, 0]
-    data_plot2 = radirr[:, indy, :, 1, 0, 0]
+    data_plot = radirr[:, indy, :, 0, 0, 0, 0]
+    data_plot2 = radirr[:, indy, :, 1, 0, 0, 0]
 
     xx, zz = np.meshgrid(np.linspace(0.0, nx * 100.0, nx), np.linspace(0.0, nz * 80.0, nz))
 

@@ -20,7 +20,7 @@ c. Backward MC sensor initial point update
 
 d. Flexible dz
 
-e. 1D vs 3D atmosphere implementation
+e. 1D vs 3D atmosphere implementation (in progress)
 
 Example
 
@@ -33,3 +33,7 @@ c. Assume point spread function and detach (x, y) from domain (x, y, z)
 d. Coarser dz toward TOA
 
 e. Imhomogeneous atmosphere only for cloud regions (x, y, z)
+
+ISSUE
+
+1. Lateral boundary sampling with 1D/3D implementation

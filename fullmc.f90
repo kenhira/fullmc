@@ -8,12 +8,14 @@ program test_fullmc
     integer  :: ng
     real(dp) :: dx, dy, dz
     real(dp), allocatable :: xarr(:), yarr(:), zarr(:)
-    real(dp), allocatable :: dxs(:, :, :, :)
+    real(dp), allocatable :: dxs(:,:)
     real(dp), allocatable :: kabs(:,:,:,:), kext(:,:,:,:)
     real(dp), allocatable :: ksca(:,:,:), gparam(:,:,:)
     real(dp), allocatable :: komg(:,:,:,:)
     real(dp), allocatable :: galb(:,:), bplnk(:,:,:), bgrnd(:,:)
     integer  :: source, swlw, transfer_mode, derivative_mode
+    integer  :: iz3dst, iz3den
+    integer, allocatable :: en3d(:)
     real(dp) :: solmu, solphi
     real(dp) :: viewmu, viewphi
     integer  :: seedval
@@ -24,6 +26,8 @@ program test_fullmc
     real(dp) :: maxx, maxy, maxz
     real(dp) :: rloc(0:2), rdir(0:2)
     integer  :: rind(0:2), rindsrc(0:2)
+    real(dp) :: rlocrec(0:2)
+    integer  :: rindrec(0:2)
     ! real(dp) :: rlpbloc(0:2), rlpbdir(0:2)
     ! integer  :: rlpbind(0:2)
     ! integer  :: rind2(0:2), rlpbind2(0:2)
@@ -104,6 +108,7 @@ program test_fullmc
     read(iuconf,*) source, swlw
     read(iuconf,*) ng
     read(iuconf,*) transfer_mode
+    read(iuconf,*) iz3dst, iz3den
     read(iuconf,*) derivative_mode
     read(iuconf,*) solmu, solphi
     read(iuconf,*) viewmu, viewphi
@@ -137,6 +142,16 @@ program test_fullmc
         zarr(i) = real(i, dp) * dz
     end do
     zarr(nz) = real(nz,dp) * dz
+
+    allocate(en3d(-1:nz))
+    en3d(-1:nz) = 1
+    if (transfer_mode == 1) then ! 3D TBD
+        en3d(-1) = 1
+        en3d(nz) = 1
+        en3d(0:nz-1) = 0
+        en3d(iz3dst:iz3den) = 1
+    end if
+
 
     allocate(kext(0:nx-1,0:ny-1,0:nz-1,ng))
     allocate(ksca(0:nx-1,0:ny-1,0:nz-1))
@@ -229,10 +244,10 @@ program test_fullmc
     maxx = maxval(xarr)
     maxy = maxval(yarr)
     maxz = maxval(zarr)
-    allocate(dxs(0:nx-1,0:ny-1,0:nz-1,0:2))
-    dxs(:, :, :, 0) = dx
-    dxs(:, :, :, 1) = dy
-    dxs(:, :, :, 2) = dz
+    allocate(dxs(0:nz-1,0:2))
+    dxs(:, 0) = dx
+    dxs(:, 1) = dy
+    dxs(:, 2) = dz
 
     if (wgttype == 1) then ! Absorption from the path length
         collision_calc => collision_calc1
@@ -381,18 +396,29 @@ program test_fullmc
 
         call collision_calc(ksca_grid, kabs_grid(1), kcol_grid)
 
-        call photon_intersect(nx, ny, nz, rind, rloc, rdir, rdir_sign, xarr, yarr, zarr, rdist, rdloc, icase, isign)
+        call photon_intersect(nx, ny, nz, rind, rloc, rdir, rdir_sign, xarr, yarr, zarr, en3d, rdist, rdloc, icase, isign)
 
         if (ptau <= kcol_grid * rdist .and. kcol_grid > 0.0_dp) then ! scattering event inside current cell
             
             rdist = ptau / kcol_grid
             rloc = rloc + rdir * rdist
+
+            ! Homogenized layer treatment
+            if (en3d(rind(2)) == 0) then ! photon coming from homogenized layer
+                rlocrec(0:2) = rloc(0:2) + rdir(0:2) * rdist
+                rindrec(0) = modulo(int(rlocrec(0) / dxs(rind(2), 0)) + nx, nx)
+                rindrec(1) = modulo(int(rlocrec(1) / dxs(rind(2), 1)) + ny, ny)
+                rindrec(2) = rind(2)
+            else
+                rindrec(:) = rind(:)
+            end if
+
             ! weight_absorbed = weight * (1.0_dp - exp(-kabs_grid * rdist))
             ! new_weight = weight - weight_absorbed
             call weight_calc(weight, 1, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             if (derivative_mode == 1) then
                 phtrace1_diff = 1. - rdist * ksca_grid
-                phtrace1(rind(0), rind(1), rind(2)) = phtrace1(rind(0), rind(1), rind(2)) + phtrace1_diff
+                phtrace1(rindrec(0), rindrec(1), rindrec(2)) = phtrace1(rindrec(0), rindrec(1), rindrec(2)) + phtrace1_diff
             end if
 
             !<< Sampling >>
@@ -401,9 +427,9 @@ program test_fullmc
             !     rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
             !     ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
             call recorder_scattering(weight_absorbed, new_weight, ia, scaord, swlw, &
-                nx, ny, nz, ng, rind, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
+                nx, ny, nz, ng, rindrec, rindsrc, kext, bplnk, gparam, phconv, phflx, phimg, &
                 rloc, rdir, dirsol, itlpbmax, xarr, yarr, zarr, dxs, transfer_mode, &
-                ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
+                en3d, ix, iy, iz, iphoton, it, debug, iutraj, vqllpb)
             ! if (source <= 1) then
             !     vqla = weight_absorbed
             !     call sample_d4(vqla, phconv, rind, nx, ny, nz)
@@ -436,18 +462,29 @@ program test_fullmc
 
         else ! move to next boundary intersection
 
+            ! Homogenized layer treatment
+            if (en3d(rind(2)) == 0) then ! photon coming from homogenized layer
+                rlocrec(0:2) = rloc(0:2) + rdir(0:2) * rdist
+                rindrec(0) = modulo(int(rlocrec(0) / dxs(rind(2), 0)) + nx, nx)
+                rindrec(1) = modulo(int(rlocrec(1) / dxs(rind(2), 1)) + ny, ny)
+                rindrec(2) = rind(2)
+            else
+                rindrec(:) = rind(:)
+            end if
+
             ptau = ptau - kcol_grid * rdist
             ! weight_absorbed = weight * (1.0_dp - exp(-kabs_grid * rdist))
             ! new_weight = weight - weight_absorbed
             call weight_calc(weight, 0, kabs_grid, rdist, komg_grid, ng, weight_absorbed, new_weight)
             if (derivative_mode == 1) then
                 phtrace1_diff = 1. - rdist * ksca_grid
-                phtrace1(rind(0), rind(1), rind(2)) = phtrace1(rind(0), rind(1), rind(2)) + phtrace1_diff
+                phtrace1(rindrec(0), rindrec(1), rindrec(2)) = phtrace1(rindrec(0), rindrec(1), rindrec(2)) + phtrace1_diff
             end if
 
             !<< Sampling >>
             call recorder_boundary(weight_absorbed, new_weight, ia, scaord, swlw, icase, isign, rdir, &
-            rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
+            rindrec, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
+            ! rind, rindsrc, nx, ny, nz, ng, phflx, phconv, bplnk)
             ! if (source <= 1) then
             !     vqla = new_weight !* abs(rdir(icase))
             !     call sample_d6(vqla, phflx, rind, min(min(scaord, 1), swlw), 2 * icase + isign, nx, ny, nz, swlw)
@@ -466,7 +503,7 @@ program test_fullmc
             if (.not. survived) exit
 
             weight(:) = new_weight(:)
-            call photon_movegrid(rind, rloc, rdir, rdist, icase, isign, nx, ny, nz, dxs, transfer_mode)
+            call photon_movegrid(rind, rloc, rdir, rdist, icase, isign, nx, ny, nz, dxs, transfer_mode, en3d)
             it = it + 1
 
             if (rind(2) >= nz) then ! TOA
@@ -494,7 +531,7 @@ program test_fullmc
                         rind(2) = 0
                         rloc(2) = 0.0_dp
                         ! rloc(2) = 0.0_dp + 1.0e-8_dp
-                        call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, &
+                        call photon_raytrace(rloc, rind, dirsol, itlpbmax, kext, xarr, yarr, zarr, nx, ny, nz, ng, dxs, transfer_mode, en3d, &
                             ix, iy, iz, ia, iphoton, it, debug, iutraj, vqllpb)
                         vqla(:) = vqllpb(:) * new_weight(:) / pi
                     end if

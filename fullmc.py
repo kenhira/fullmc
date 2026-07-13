@@ -38,6 +38,7 @@ class FullMC:
                  bplnk = None,
                  galb = None,
                  bgrnd = None,
+                 homogenize = False,
                  Ncpu = None,
                  wrkdir = '.'):
         self.nx = nx
@@ -67,6 +68,7 @@ class FullMC:
             self.kabs = np.full((nx, ny, nz, ng), np.nan, dtype=np.float64)
         else:
             self.kabs = kabs
+        self.kabs_in = np.copy(self.kabs)
         if gparam is None:
             self.gparam = np.full((nx, ny, nz), np.nan, dtype=np.float64)
         else:
@@ -88,6 +90,7 @@ class FullMC:
         else:
             self.Ncpu = min(Ncpu, mp.cpu_count())
             print(f'Using {self.Ncpu} CPU cores.')
+        self.homogenize = homogenize
         self.wrkdir = wrkdir
         self.g_sort = np.arange(ng, dtype=np.int32)
     
@@ -122,6 +125,33 @@ class FullMC:
                 bbgrnd = np.polyval([aplk[4], aplk[3], aplk[2], aplk[1], aplk[0]], xxgrnd)
                 self.bgrnd = 1./(np.exp(bbgrnd)*wl**3.*xxgrnd)
     
+    def pre_run_mod(self, inhom_thres=1.e-3): # m^-1
+        self.g_sort = np.argsort(np.mean(self.kabs[:, :, :, :], axis=(0, 1, 2)))[::-1]
+        self.kabs_in[:, :, :, :] = self.kabs[:, :, :, self.g_sort]
+        if self.homogenize:
+            ksca_max = np.max(self.ksca, axis=(0, 1))
+            ksca_min = np.min(self.ksca, axis=(0, 1))
+            ksca_crit = ksca_max - ksca_min
+            kabs_max = np.max(self.kabs_in, axis=(0, 1))
+            kabs_min = np.min(self.kabs_in, axis=(0, 1))
+            kabs_crit = np.max(kabs_max - kabs_min, axis=1)
+            # print('ksca_crit:', ksca_crit)
+            # print('kabs_crit:', kabs_crit)
+            en3d_z = np.zeros(self.nz, dtype=np.int32)
+            z_inhom = np.where((ksca_crit > inhom_thres) | (kabs_crit > inhom_thres))
+            en3d_z[z_inhom] = 1
+            z_arr = np.arange(self.nz, dtype=np.int32)
+            iz3dst = np.min(z_arr[en3d_z == 1])
+            iz3den = np.max(z_arr[en3d_z == 1])
+            self.iz3dst = iz3dst
+            self.iz3den = iz3den
+            print(f'Inhomogeneous layers found between iz3dst={iz3dst} and iz3den={iz3den}. The rest of the layers will be treated as homogeneous.')
+        else:
+            self.iz3dst = 0
+            self.iz3den = self.nz - 1
+            # print('All layers will be treated as inhomogeneous.')
+
+
     def write_config(self):
         os.system(f'mkdir -p {self.wrkdir}')
         if self.Ncpu < 1:
@@ -133,8 +163,6 @@ class FullMC:
                 self.write_config_single(work_dir)
 
     def write_config_single(self, workdir):
-        self.g_sort = np.argsort(np.mean(self.kabs[:, :, :, :], axis=(0, 1, 2)))[::-1]
-        self.kabs[:, :, :, :] = self.kabs[:, :, :, self.g_sort]
         with open(f'{workdir}/config.txt', 'w') as fh:
             self.seedval = self.seedval + 11
             fh.write("%d %d %d\n" % (self.nx, self.ny, self.nz))
@@ -142,6 +170,7 @@ class FullMC:
             fh.write("%d %d\n" % (self.source, self.swlw))
             fh.write("%d\n" % self.ng)
             fh.write("%d\n" % self.transfermode)
+            fh.write("%d %d\n" % (self.iz3dst, self.iz3den))
             fh.write("%d\n" % self.derivative)
             fh.write("%g %g\n" % (self.solmu, self.solphi))
             fh.write("%g %g\n" % (self.viewmu, self.viewphi))
@@ -157,7 +186,7 @@ class FullMC:
                         if self.ksca[ix,iy,iz] != self.ksca[ix,iy,iz]:
                             raise ValueError("ksca contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
                         for ig in range(self.ng):
-                            if self.kabs[ix,iy,iz,ig] != self.kabs[ix,iy,iz,ig]:
+                            if self.kabs_in[ix,iy,iz,ig] != self.kabs_in[ix,iy,iz,ig]:
                                 raise ValueError("kabs contains NaN values at index (%d,%d,%d,%d)." % (ix,iy,iz,ig))
                         # if self.kabs[ix,iy,iz] != self.kabs[ix,iy,iz]:
                         #     raise ValueError("kabs contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
@@ -167,7 +196,7 @@ class FullMC:
                             raise ValueError("bplnk contains NaN values at index (%d,%d,%d)." % (ix,iy,iz))
                         # fh.write("%15.6e %15.6e %15.6e %15.6e\n" % (self.kext[ix,iy,iz], self.kabs[ix,iy,iz], self.gparam[ix,iy,iz], self.bplnk[ix,iy,iz]))
                         fh.write("%15.6e %15.6e %15.6e\n" % (self.ksca[ix,iy,iz], self.gparam[ix,iy,iz], self.bplnk[ix,iy,iz]))
-                        txtabs = " ".join(["%15.6e" % self.kabs[ix,iy,iz,ig] for ig in range(self.ng)])
+                        txtabs = " ".join(["%15.6e" % self.kabs_in[ix,iy,iz,ig] for ig in range(self.ng)])
                         fh.write(txtabs + "\n")
                     if self.galb[ix,iy] != self.galb[ix,iy]:
                         raise ValueError("galb contains NaN values at index (%d,%d)." % (ix,iy))
@@ -176,6 +205,7 @@ class FullMC:
                     fh.write("%15.6e %15.6e\n" % (self.galb[ix,iy], self.bgrnd[ix,iy]))
         
     def run_mc(self):
+        self.pre_run_mod()
         print("writing config file...")
         self.write_config()
         print("running FullMC...")
@@ -201,6 +231,11 @@ class FullMC:
                 outrad, nphoton = self.read_result_conv_single(self.wrkdir)
             elif kind == 'tracer1':
                 outrad, nphoton = self.read_result_tracer1_single(self.wrkdir)
+            outrad_final = np.zeros_like(outrad, dtype=np.float64)
+            if outrad.shape[-2] == 1: # ng
+                outrad_final = outrad[..., 0, :]
+            else:
+                outrad_final[..., self.g_sort, :] = outrad[..., :, :]
         else:
             outrad_pts = []
             npho_pts = []
@@ -225,7 +260,7 @@ class FullMC:
             if outrad.shape[-2] == 1: # ng
                 outrad_final = outrad[..., 0, :]
             else:
-                outrad_final[..., self.g_sort[::-1], :] = outrad[..., :, :]
+                outrad_final[..., self.g_sort, :] = outrad[..., :, :]
         return outrad_final
 
     def read_result_img_single(self, workdir):
