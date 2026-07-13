@@ -7,8 +7,8 @@ program test_fullmc
     integer  :: nx, ny, nz
     integer  :: ng
     real(dp) :: dx, dy, dz
-    real(dp) :: dxs(0:2)
     real(dp), allocatable :: xarr(:), yarr(:), zarr(:)
+    real(dp), allocatable :: dxs(:, :, :, :)
     real(dp), allocatable :: kabs(:,:,:,:), kext(:,:,:,:)
     real(dp), allocatable :: ksca(:,:,:), gparam(:,:,:)
     real(dp), allocatable :: komg(:,:,:,:)
@@ -124,6 +124,20 @@ program test_fullmc
     write(*,*) '               wgttype=', wgttype
     write(*,*) '               debug=', debug
 
+    allocate(xarr(0:nx), yarr(0:ny), zarr(0:nz))
+    do i = 0, nx-1
+        xarr(i) = real(i, dp) * dx
+    end do
+    xarr(nx) = real(nx,dp) * dx
+    do i = 0, ny-1
+        yarr(i) = real(i, dp) * dy
+    end do
+    yarr(ny) = real(ny,dp) * dy
+    do i = 0, nz-1
+        zarr(i) = real(i, dp) * dz
+    end do
+    zarr(nz) = real(nz,dp) * dz
+
     allocate(kext(0:nx-1,0:ny-1,0:nz-1,ng))
     allocate(ksca(0:nx-1,0:ny-1,0:nz-1))
     allocate(komg(0:nx-1,0:ny-1,0:nz-1,ng))
@@ -183,20 +197,6 @@ program test_fullmc
     close(iuconf)
     !-- End of configuration file reading
 
-    allocate(xarr(0:nx), yarr(0:ny), zarr(0:nz))
-    do i = 0, nx-1
-        xarr(i) = real(i, dp) * dx
-    end do
-    xarr(nx) = real(nx,dp) * dx
-    do i = 0, ny-1
-        yarr(i) = real(i, dp) * dy
-    end do
-    yarr(ny) = real(ny,dp) * dy
-    do i = 0, nz-1
-        zarr(i) = real(i, dp) * dz
-    end do
-    zarr(nz) = real(nz,dp) * dz
-
     init_weight = 1.0_dp
     weight_min = 0.5_dp
     weight_rr = 0.5_dp
@@ -223,12 +223,16 @@ program test_fullmc
     seed = seedval + (/ (i-1, i=1,seed_size) /)
     call random_seed(put=seed)
 
-    maxx = real(nx,dp) * dx
-    maxy = real(ny,dp) * dy
-    maxz = real(nz,dp) * dz
-    dxs(0) = dx
-    dxs(1) = dy
-    dxs(2) = dz
+    ! maxx = real(nx,dp) * dx
+    ! maxy = real(ny,dp) * dy
+    ! maxz = real(nz,dp) * dz
+    maxx = maxval(xarr)
+    maxy = maxval(yarr)
+    maxz = maxval(zarr)
+    allocate(dxs(0:nx-1,0:ny-1,0:nz-1,0:2))
+    dxs(:, :, :, 0) = dx
+    dxs(:, :, :, 1) = dy
+    dxs(:, :, :, 2) = dz
 
     if (wgttype == 1) then ! Absorption from the path length
         collision_calc => collision_calc1
@@ -462,7 +466,7 @@ program test_fullmc
             if (.not. survived) exit
 
             weight(:) = new_weight(:)
-            call photon_movegrid(rind, rloc, rdir, rdist, icase, isign, nx, ny, dxs, transfer_mode)
+            call photon_movegrid(rind, rloc, rdir, rdist, icase, isign, nx, ny, nz, dxs, transfer_mode)
             it = it + 1
 
             if (rind(2) >= nz) then ! TOA

@@ -16,7 +16,7 @@ module fullmc_funcs
             integer, intent(in) :: rind(0:2), rindsrc(0:2)
             real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
             real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-            real(dp), intent(in) :: dxs(0:2)
+            real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
             integer, intent(in) :: itlpbmax
             real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
             real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -75,7 +75,7 @@ module fullmc_funcs
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:2)
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -105,7 +105,7 @@ module fullmc_funcs
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:2)
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -136,7 +136,7 @@ module fullmc_funcs
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:2)
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -166,7 +166,7 @@ module fullmc_funcs
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:2)
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -206,7 +206,7 @@ module fullmc_funcs
         integer, intent(in) :: rind(0:2), rindsrc(0:2)
         real(dp), intent(in) :: weight_absorbed(:), new_weight(:)
         real(dp), intent(in) :: rloc(0:2), rdir(0:2), dirsol(0:2)
-        real(dp), intent(in) :: dxs(0:2)
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: itlpbmax
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: bplnk(0:nx-1,0:ny-1,0:nz-1)
@@ -636,17 +636,19 @@ module fullmc_funcs
         scaord = scaord + 1
     end subroutine photon_reflection
 
-    subroutine photon_movegrid(r5ind, r5loc, r5dir, r5dist, icase, isign, nx, ny, dxs, transfer_mode)
+    subroutine photon_movegrid(r5ind, r5loc, r5dir, r5dist, icase, isign, nx, ny, nz, dxs, transfer_mode)
         implicit none
         integer, intent(inout) :: r5ind(0:2)
         real(dp), intent(inout) :: r5loc(0:2)
         real(dp), intent(in) :: r5dir(0:2)
         real(dp), intent(in) :: r5dist
-        integer, intent(in) :: icase, isign, nx, ny
-        real(dp), intent(in) :: dxs(0:2)
+        integer, intent(in) :: icase, isign, nx, ny, nz
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: transfer_mode
+        real(dp) :: dxslocal(0:2)
         integer :: r5ind2(0:2)
         r5loc(0:2) = r5loc(0:2) + r5dir(0:2) * r5dist
+        dxslocal(0:2) = dxs(r5ind(0), r5ind(1), r5ind(2), 0:2)
         r5ind2(0:2) = r5ind(0:2)
         r5ind2(icase) = r5ind(icase) + 2 * isign - 1
         ! wrap x,y
@@ -656,7 +658,7 @@ module fullmc_funcs
         ! rloc(0) = modulo(rloc(0) + maxx, maxx) * real(isign) + (maxx - modulo(maxx - rloc(0), maxx)) * real(1 - isign)
         ! rloc(1) = modulo(rloc(1) + maxy, maxy) * real(isign) + (maxy - modulo(maxy - rloc(1), maxy)) * real(1 - isign)
         r5loc(icase) = merge( &
-            real(r5ind(icase), dp) * dxs(icase) * real(isign, dp) + real(r5ind(icase) + 1, dp) * dxs(icase) * real(1 - isign, dp), &
+            real(r5ind(icase), dp) * dxslocal(icase) * real(isign, dp) + real(r5ind(icase) + 1, dp) * dxslocal(icase) * real(1 - isign, dp), &
             r5loc(icase), &
             icase <= 1 )
     end subroutine photon_movegrid
@@ -704,7 +706,7 @@ module fullmc_funcs
         integer, intent(in) :: nx, ny, nz, ng
         real(dp), intent(in) :: kext(0:nx-1,0:ny-1,0:nz-1,ng)
         real(dp), intent(in) :: xarr(0:nx), yarr(0:ny), zarr(0:nz)
-        real(dp), intent(in) :: dxs(0:2)
+        real(dp), intent(in) :: dxs(0:nx-1,0:ny-1,0:nz-1,0:2)
         integer, intent(in) :: transfer_mode
         integer, intent(in) :: ix, iy, iz, ia, iphoton, it
         integer, intent(in) :: debug
@@ -775,7 +777,7 @@ module fullmc_funcs
             !     real(rlpbind(icase), dp) * dxs(icase) * real(isign, dp) + real(rlpbind(icase) + 1, dp) * dxs(icase) * real(1 - isign, dp), &
             !     rlpbloc(icase), &
             !     icase <= 1 )
-            call photon_movegrid(rlpbind, rlpbloc, rlpbdir, rdist, icase, isign, nx, ny, dxs, transfer_mode)
+            call photon_movegrid(rlpbind, rlpbloc, rlpbdir, rdist, icase, isign, nx, ny, nz, dxs, transfer_mode)
 
             itlpb = itlpb + 1
             if (rlpbind(2) >= nz) exit
